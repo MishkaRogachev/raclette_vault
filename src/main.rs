@@ -1,3 +1,5 @@
+mod core;
+
 use std::io::{self, stdout};
 
 use ratatui::{

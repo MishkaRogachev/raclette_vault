@@ -1,6 +1,8 @@
-[workspace]
-resolver = "2"
-members = [
-    "core",
-    "tui",
-]
+[package]
+name = "raclette_vault"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+secp256k1 = { version = "0.20.3", features = ["rand"] }
+ratatui = "0.28.0"
