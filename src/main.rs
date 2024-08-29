@@ -1,5 +1,4 @@
 mod core;
-mod persistence;
 
 use std::io::{self, stdout};
 

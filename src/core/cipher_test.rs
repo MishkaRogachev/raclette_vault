@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::persistence::cipher;
+    use crate::core::cipher;
 
     #[test]
     fn test_hash_password() {
@@ -14,26 +14,28 @@ mod tests {
     }
 
     #[test]
-    fn test_encrypt_and_decrypt() {
+    fn test_encrypt_and_decrypt() -> anyhow::Result<()> {
         let cipher = cipher::Cipher::new_from_hash(cipher::generate_random_hash());
 
         let plaintext = b"how are you doing?";
-        let ciphertext = cipher.encrypt(plaintext).expect("Encryption failed");
+        let ciphertext = cipher.encrypt(plaintext)?;
 
         assert_ne!(plaintext.to_vec(), ciphertext);
-        let decrypted_plaintext = cipher.decrypt(&ciphertext).expect("Decryption failed");
+        let decrypted_plaintext = cipher.decrypt(&ciphertext)?;
 
         assert_eq!(plaintext.to_vec(), decrypted_plaintext);
+        Ok(())
     }
 
     #[test]
-    fn test_try_to_decrypt_with_wrong_key() {
+    fn test_try_to_decrypt_with_wrong_key() -> anyhow::Result<()> {
         let cipher1 = cipher::Cipher::new_from_password("12345678");
         let cipher2 = cipher::Cipher::new_from_password("01234567");
 
         let plaintext = b"how are you doing?";
-        let ciphertext = cipher1.encrypt(plaintext).expect("Encryption failed");
+        let ciphertext = cipher1.encrypt(plaintext)?;
 
         assert!(cipher2.decrypt(&ciphertext).is_err());
+        Ok(())
     }
 }

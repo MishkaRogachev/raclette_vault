@@ -1,31 +1,26 @@
-use sled::IVec;
 use serde::{Serialize, Deserialize};
-use bincode;
+use serde_json;
 use anyhow::Result;
 
 use super::cipher::Cipher;
 
-pub struct Db {
+pub struct Persistence {
     db: sled::Db,
     cipher: Cipher,
 }
 
-impl Db {
-    pub fn open(path: &str, password: &str) -> Result<Self> {
-        let db = sled::open(path)?;
+impl Persistence {
+    pub fn start(db: sled::Db, password: &str) -> Result<Self> {
         let cipher = Cipher::new_from_password(password);
 
-        Ok(Self {
-            db,
-            cipher,
-        })
+        Ok(Self { db, cipher })
     }
 
     pub fn insert<V>(&self, key: &[u8], value: &V) -> Result<()>
     where
         V: Serialize,
     {
-        let serialized_value = bincode::serialize(value)?;
+        let serialized_value = serde_json::to_vec(value)?;
         let encrypted_value = self.cipher.encrypt(&serialized_value)?;
         self.db.insert(key, encrypted_value)?;
         Ok(())
@@ -37,14 +32,14 @@ impl Db {
     {
         if let Some(encrypted_value) = self.db.get(key)? {
             let decrypted_value = self.cipher.decrypt(&encrypted_value)?;
-            let deserialized_value = bincode::deserialize(&decrypted_value)?;
+            let deserialized_value = serde_json::from_slice(&decrypted_value)?;
             Ok(Some(deserialized_value))
         } else {
             Ok(None)
         }
     }
 
-    pub fn remove(&self, key: &[u8]) -> Result<Option<IVec>> {
+    pub fn remove(&self, key: &[u8]) -> Result<Option<sled::IVec>> {
         self.db.remove(key).map_err(Into::into)
     }
 }
