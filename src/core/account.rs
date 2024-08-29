@@ -1,7 +1,8 @@
+use serde::{Serialize, Deserialize};
 use web3::types::Address;
 use super::key_pair::KeyPair;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum Account {
     Watch { address: Address },
     Owned { address: Address, keypair: KeyPair },
