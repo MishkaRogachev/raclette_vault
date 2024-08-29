@@ -1,5 +1,6 @@
 use secp256k1::{PublicKey,SecretKey,rand::{rngs,SeedableRng}};
 
+#[derive(Clone, Debug)]
 pub struct KeyPair {
     pub secret_key: SecretKey,
     pub public_key: PublicKey,
