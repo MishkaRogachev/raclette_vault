@@ -16,4 +16,11 @@ impl KeyPair {
             public_key,
         }
     }
+
+    pub fn to_address(&self) -> web3::types::Address {
+        let public_key = self.public_key.serialize_uncompressed();
+        let hash = web3::signing::keccak256(&public_key[1..]);
+        let address = &hash[12..];
+        web3::types::Address::from_slice(address)
+    }
 }
