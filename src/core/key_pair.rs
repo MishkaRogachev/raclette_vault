@@ -1,4 +1,5 @@
-use secp256k1::rand::rngs::JitterRng;
+use secp256k1::{Secp256k1, rand::{rngs::{JitterRng, StdRng}, SeedableRng, RngCore}};
+use rand::rngs::OsRng;
 
 pub const SECRET_KEY_LEN: usize = secp256k1::constants::SECRET_KEY_SIZE;
 pub const PUBLIC_KEY_LEN: usize = secp256k1::constants::PUBLIC_KEY_SIZE;
@@ -13,9 +14,18 @@ pub struct KeyPair {
 
 impl KeyPair {
     pub fn new(state: u64) -> Self {
-        let secp = secp256k1::Secp256k1::new();
-        let mut rng = JitterRng::new_with_timer(get_nstime);
-        let (secret_key, public_key) = secp.generate_keypair(&mut rng);
+        let secp = Secp256k1::new();
+        let mut jitter_rng = JitterRng::new_with_timer(get_nstime);
+
+        let mut seed = [0u8; 32];
+        // Fill the first half with OsRng
+        rand::RngCore::fill_bytes(&mut OsRng, &mut seed[..16]);
+        // Fill the second half with JitterRng
+        RngCore::fill_bytes(&mut jitter_rng, &mut seed[16..]);
+
+        // Seed StdRng with the combined entropy
+        let mut combined_rng = <StdRng as SeedableRng>::from_seed(seed);
+        let (secret_key, public_key) = secp.generate_keypair(&mut combined_rng);
 
         Self {
             secret_key: secret_key[..].try_into().expect("SecretKey must be 32 bytes"),
