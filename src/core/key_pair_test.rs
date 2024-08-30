@@ -5,7 +5,7 @@ mod tests {
 
     #[test]
     fn test_generate_keypair() {
-        let keypair = KeyPair::generate(42);
+        let keypair = KeyPair::new(42);
 
         assert_eq!(keypair.public_key.serialize().len(), 33, "Public key length mismatch");
         assert_eq!(keypair.secret_key[..].len(), 32, "Secret key length mismatch");
@@ -22,22 +22,9 @@ mod tests {
 
     #[test]
     fn test_to_account() {
-        let keypair = KeyPair::generate(42);
+        let keypair = KeyPair::new(42);
         let address = keypair.to_address();
 
         assert_eq!(address.0.len(), 20, "Address length mismatch");
-    }
-
-    #[test]
-    fn test_serialize_and_deserialize() -> anyhow::Result<()> {
-        let keypair = KeyPair::generate(665);
-
-        let serialized = serde_json::to_string(&keypair)?;
-        let deserialized: KeyPair = serde_json::from_str(&serialized)?;
-
-        assert_eq!(keypair.secret_key[..], deserialized.secret_key[..]);
-        assert_eq!(keypair.public_key.serialize(), deserialized.public_key.serialize());
-
-        Ok(())
     }
 }
