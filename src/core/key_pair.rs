@@ -1,10 +1,8 @@
-use secp256k1::rand::SeedableRng;
+use secp256k1::rand::rngs::JitterRng;
 
-const SECRET_KEY_LEN: usize = 32;
-const PUBLIC_KEY_LEN: usize = 33;
+pub const SECRET_KEY_LEN: usize = secp256k1::constants::SECRET_KEY_SIZE;
+pub const PUBLIC_KEY_LEN: usize = secp256k1::constants::PUBLIC_KEY_SIZE;
 
-const ERR_SECRET_KEY_LEN: &str = "SecretKey must be 32 bytes";
-const ERR_PUBLIC_KEY_LEN: &str = "PublicKey must be 33 bytes";
 const ERR_SECRET_KEY_CONVERT: &str = "Failed to convert secret_key";
 const ERR_PUBLIC_KEY_CONVERT: &str = "Failed to convert public_key";
 
@@ -16,7 +14,7 @@ pub struct KeyPair {
 impl KeyPair {
     pub fn new(state: u64) -> Self {
         let secp = secp256k1::Secp256k1::new();
-        let mut rng = secp256k1::rand::rngs::StdRng::seed_from_u64(state);
+        let mut rng = JitterRng::new_with_timer(get_nstime);
         let (secret_key, public_key) = secp.generate_keypair(&mut rng);
 
         Self {
@@ -66,10 +64,10 @@ impl<'de> serde::Deserialize<'de> for KeyPair {
             .map_err(serde::de::Error::custom)?;
 
         if secret_key.len() != SECRET_KEY_LEN {
-            return Err(serde::de::Error::custom(ERR_SECRET_KEY_LEN));
+            return Err(serde::de::Error::custom(err_secret_key_len()));
         }
         if public_key.len() != PUBLIC_KEY_LEN {
-            return Err(serde::de::Error::custom(ERR_PUBLIC_KEY_LEN));
+            return Err(serde::de::Error::custom(err_public_key_len()));
         }
 
         Ok(KeyPair {
@@ -77,4 +75,18 @@ impl<'de> serde::Deserialize<'de> for KeyPair {
             public_key: public_key.try_into().expect(ERR_PUBLIC_KEY_CONVERT),
         })
     }
+}
+
+fn get_nstime() -> u64 {
+    let dur = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_else(|_| { std::time::Duration::from_secs(0) });
+    dur.as_secs() << 30 | dur.subsec_nanos() as u64
+}
+
+fn err_secret_key_len() -> String {
+    format!("SecretKey must be {} bytes", SECRET_KEY_LEN)
+}
+
+fn err_public_key_len() -> String {
+    format!("PublicKey must be {} bytes", PUBLIC_KEY_LEN)
 }
