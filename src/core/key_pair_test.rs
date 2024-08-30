@@ -5,7 +5,7 @@ mod tests {
 
     #[test]
     fn test_generate_keypair() {
-        let keypair = key_pair::KeyPair::new(42);
+        let keypair = key_pair::KeyPair::new();
 
         assert_eq!(keypair.public_key.len(), key_pair::PUBLIC_KEY_LEN, "Public key length mismatch");
         assert_eq!(keypair.secret_key.len(), key_pair::SECRET_KEY_LEN, "Secret key length mismatch");
@@ -22,7 +22,7 @@ mod tests {
 
     #[test]
     fn test_to_account() {
-        let keypair = key_pair::KeyPair::new(42);
+        let keypair = key_pair::KeyPair::new();
         let address = keypair.to_address();
 
         assert_eq!(address.0.len(), 20, "Address length mismatch");

@@ -7,13 +7,14 @@ pub const PUBLIC_KEY_LEN: usize = secp256k1::constants::PUBLIC_KEY_SIZE;
 const ERR_SECRET_KEY_CONVERT: &str = "Failed to convert secret_key";
 const ERR_PUBLIC_KEY_CONVERT: &str = "Failed to convert public_key";
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct KeyPair {
     pub secret_key: [u8; SECRET_KEY_LEN],
     pub public_key: [u8; PUBLIC_KEY_LEN],
 }
 
 impl KeyPair {
-    pub fn new(state: u64) -> Self {
+    pub fn new() -> Self {
         let secp = Secp256k1::new();
         let mut jitter_rng = JitterRng::new_with_timer(get_nstime);
 
@@ -27,9 +28,21 @@ impl KeyPair {
         let mut combined_rng = <StdRng as SeedableRng>::from_seed(seed);
         let (secret_key, public_key) = secp.generate_keypair(&mut combined_rng);
 
+        Self::from_secp256k1(secret_key, public_key)
+    }
+
+    pub fn from_secret_key(secret_key: secp256k1::SecretKey) -> anyhow::Result<Self> {
+        let secp = Secp256k1::new();
+        // Derive the public key from the secret key
+        let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
+
+        Ok(Self::from_secp256k1(secret_key, public_key))
+    }
+
+    pub fn from_secp256k1(secret_key: secp256k1::SecretKey, public_key: secp256k1::PublicKey) -> Self {
         Self {
-            secret_key: secret_key[..].try_into().expect("SecretKey must be 32 bytes"),
-            public_key: public_key.serialize(),
+            secret_key: secret_key[..].try_into().expect(&err_secret_key_len()),
+            public_key: public_key.serialize()
         }
     }
 
