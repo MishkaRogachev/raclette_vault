@@ -18,6 +18,7 @@ pub fn welcome_new_user(frame: &mut Frame) {
         height: area.height,
     };
 
+    // Vertical layout for the content
     let content_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -56,5 +57,5 @@ pub fn welcome_new_user(frame: &mut Frame) {
 
     // Render the buttons
     frame.render_widget(common::button("Q", "uit"), buttons_row[0]);
-    frame.render_widget(common::button("C", "reate User Account"), buttons_row[1]);
+    frame.render_widget(common::button("C", "reate keypair"), buttons_row[1]);
 }

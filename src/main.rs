@@ -12,6 +12,9 @@ use ratatui::{
 mod core;
 mod ui;
 
+const MIN_TERMINAL_WIDTH: u16 = 60;
+const MIN_TERMINAL_HEIGHT: u16 = 12;
+
 fn main() -> io::Result<()> {
     // Set up terminal
     enable_raw_mode()?;
@@ -22,7 +25,16 @@ fn main() -> io::Result<()> {
     // Main loop
     let mut should_quit = false;
     while !should_quit {
-        terminal.draw(|f| ui::welcome::welcome_new_user(f))?;
+        terminal.draw(|f| {
+            let area = f.area();
+            if area.width < MIN_TERMINAL_WIDTH || area.height < MIN_TERMINAL_HEIGHT {
+                let warning = ratatui::widgets::Paragraph::new("Terminal window is too small")
+                    .alignment(ratatui::layout::Alignment::Center);
+                f.render_widget(warning, area);
+            } else {
+                ui::welcome::welcome_new_user(f);
+            }
+        })?;
         should_quit = handle_events()?;
     }
 
