@@ -1,31 +1,32 @@
-mod core;
-
-use std::io::{self, stdout};
-
+use std::{io, io::stdout};
 use ratatui::{
     backend::CrosstermBackend,
     crossterm::{
         event::{self, Event, KeyCode},
-        terminal::{
-            disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-        },
+        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
         ExecutableCommand,
     },
-    widgets::{Block, Paragraph},
-    Frame, Terminal,
+    Terminal,
 };
 
+mod core;
+mod ui;
+
 fn main() -> io::Result<()> {
+    // Set up terminal
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
-    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+    let backend = CrosstermBackend::new(stdout());
+    let mut terminal = Terminal::new(backend)?;
 
+    // Main loop
     let mut should_quit = false;
     while !should_quit {
-        terminal.draw(ui)?;
+        terminal.draw(|f| ui::logo::big_logo(f))?;
         should_quit = handle_events()?;
     }
 
+    // Restore terminal
     disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
     Ok(())
@@ -34,17 +35,10 @@ fn main() -> io::Result<()> {
 fn handle_events() -> io::Result<bool> {
     if event::poll(std::time::Duration::from_millis(50))? {
         if let Event::Key(key) = event::read()? {
-            if key.kind == event::KeyEventKind::Press && key.code == KeyCode::Char('q') {
+            if key.code == KeyCode::Char('q') {
                 return Ok(true);
             }
         }
     }
     Ok(false)
-}
-
-fn ui(frame: &mut Frame) {
-    frame.render_widget(
-        Paragraph::new("Under construnction...").block(Block::bordered().title("Raclette Vault")),
-        frame.area(),
-    );
 }
