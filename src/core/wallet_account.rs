@@ -2,21 +2,21 @@ use serde::{Serialize, Deserialize};
 use web3::types::Address;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub enum AccountType {
+pub enum WalletAccountType {
     Watch,
     Owned,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct Account {
+pub struct WalletAccount {
     pub name: String,
-    pub account_type: AccountType,
+    pub account_type: WalletAccountType,
     address: Address
 }
 
-impl Account {
-    pub fn new(name: String, account_type: AccountType, address: Address) -> Self {
-        Account {
+impl WalletAccount {
+    pub fn new(name: String, account_type: WalletAccountType, address: Address) -> Self {
+        Self {
             name,
             account_type,
             address

@@ -10,7 +10,7 @@ pub struct Cipher {
 impl Cipher {
     pub fn new_from_hash(hash: [u8; 32]) -> Self {
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&hash));
-        Cipher { cipher }
+        Self { cipher }
     }
 
     pub fn new_from_password(password: &str) -> Self {

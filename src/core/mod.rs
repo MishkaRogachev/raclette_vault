@@ -1,4 +1,4 @@
-pub mod account;
+pub mod wallet_account;
 pub mod cipher;
 mod cipher_test;
 pub mod key_pair;
