@@ -22,7 +22,7 @@ fn main() -> io::Result<()> {
     // Main loop
     let mut should_quit = false;
     while !should_quit {
-        terminal.draw(|f| ui::logo::big_logo(f))?;
+        terminal.draw(|f| ui::welcome::welcome_new_user(f))?;
         should_quit = handle_events()?;
     }
 
