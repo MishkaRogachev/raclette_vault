@@ -1,13 +1,18 @@
+use std::sync::{atomic::AtomicBool, Arc};
+
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect}, style::{Color, Style, Stylize}, widgets::Paragraph, Frame
+    crossterm::event::Event,
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    style::{Color, Style, Stylize},
+    widgets::Paragraph, Frame
 };
-use super::{common, logo};
+use super::{button, logo};
 
 const WELLCOME_HEIGHT: u16 = 1;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
-pub fn welcome_new_user(frame: &mut Frame) {
+pub fn welcome_new_user(frame: &mut Frame, event: Option<Event>, shutdown_handle: Arc<AtomicBool>) {
     let area = frame.area();
     let horizontal_padding = (area.width.saturating_sub(logo::BIG_LOGO_WIDTH)) / 2;
 
@@ -55,7 +60,14 @@ pub fn welcome_new_user(frame: &mut Frame) {
         .alignment(Alignment::Center);
     frame.render_widget(warning_text, content_layout[3]);
 
-    // Render the buttons
-    frame.render_widget(common::button("Q", "uit"), buttons_row[0]);
-    frame.render_widget(common::button("C", "reate keypair"), buttons_row[1]);
+    // Render quit button
+    let mut quit_button = button::Button::new("Quit", Some('q'))
+        .action(move || { shutdown_handle.store(true, std::sync::atomic::Ordering::Relaxed); });
+    let event = quit_button.handle_event(event);
+    frame.render_widget(quit_button, buttons_row[0]);
+
+    // Render create account
+    let mut create_account_button = button::Button::new("Create User Account", Some('c'));
+    create_account_button.handle_event(event);
+    frame.render_widget(create_account_button, buttons_row[1]);
 }
