@@ -16,7 +16,7 @@ pub trait Widget {
 pub struct Button {
     label: String,
     hotkey: Option<char>,
-    action: Option<Box<dyn Fn()>>,
+    action: Option<Box<dyn Fn() + Send>>,
     is_hovered: bool,
     is_pressed: bool,
     area: Option<Rect>,
@@ -34,7 +34,7 @@ impl Button {
         }
     }
 
-    pub fn action<F: Fn() + 'static>(mut self, f: F) -> Self {
+    pub fn action<F: Fn() + 'static + Send>(mut self, f: F) -> Self {
         self.action = Some(Box::new(f));
         self
     }

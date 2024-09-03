@@ -14,16 +14,17 @@ const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 pub struct WelcomeScreen {
     quit_button: common::Button,
-    create_account_button: common::Button,
+    onboard_button: common::Button,
 }
 
 impl WelcomeScreen {
-    pub fn new(shutdown_handle: Arc<AtomicBool>) -> Self {
+    pub fn new(shutdown_handle: Arc<AtomicBool>, onboard_handle: Arc<AtomicBool>) -> Self {
         let quit_button = common::Button::new("Quit", Some('q'))
             .action(move || { shutdown_handle.store(true, std::sync::atomic::Ordering::Relaxed); });
-        let create_account_button = common::Button::new("Create User Account", Some('c'));
+        let onboard_button = common::Button::new("Onboard", Some('o'))
+            .action(move || { onboard_handle.store(true, std::sync::atomic::Ordering::Relaxed); });
 
-        Self { quit_button, create_account_button }
+        Self { quit_button, onboard_button, }
     }
 }
 
@@ -31,7 +32,7 @@ impl common::Widget for WelcomeScreen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         let event = self.quit_button.handle_event(event);
         if let Some(event) = event {
-            return self.create_account_button.handle_event(event);
+            return self.onboard_button.handle_event(event);
         }
         None
     }
@@ -84,6 +85,6 @@ impl common::Widget for WelcomeScreen {
         frame.render_widget(warning_text, content_layout[3]);
 
         self.quit_button.draw(frame, buttons_row[0]);
-        self.create_account_button.draw(frame, buttons_row[1]);
+        self.onboard_button.draw(frame, buttons_row[1]);
     }
 }

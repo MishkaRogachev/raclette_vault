@@ -1,18 +1,15 @@
-use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
-
 use ratatui::{
     crossterm::{event as crossterm_event, terminal, ExecutableCommand},
     prelude::CrosstermBackend, Terminal
 };
 
-use super::{event::EventHandler, common::Widget};
+use super::{app::App, common::Widget, event::EventHandler};
 
 const MIN_TERMINAL_WIDTH: u16 = 60;
 const MIN_TERMINAL_HEIGHT: u16 = 12;
 
 pub struct Tui {
     handler: EventHandler,
-    shutdown_handle: Arc<AtomicBool>,
 }
 
 impl Tui {
@@ -25,21 +22,17 @@ impl Tui {
             panic_hook(panic);
         }));
 
-        let shutdown_handle = Arc::new(AtomicBool::new(false));
-
-        Ok(Self { handler, shutdown_handle })
+        Ok(Self { handler })
     }
 
-    pub fn run(&self) -> anyhow::Result<tokio::task::JoinHandle<()>> {
-        let shutdown_handle = self.shutdown_handle.clone();
+    pub fn run(&self, mut app: App) -> anyhow::Result<tokio::task::JoinHandle<()>> {
         let mut events = self.handler.subscribe_events();
         let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stdout()))?;
 
         Ok(tokio::spawn(async move {
-            let mut screen = super::screens::welcome::WelcomeScreen::new(shutdown_handle.clone());
-            while !shutdown_handle.load(Ordering::Relaxed) {
+            while app.is_running() {
                 if let Ok(event) = events.try_recv() {
-                    screen.handle_event(event);
+                    app.handle_event(event);
                 }
 
                 terminal.draw(|frame| {
@@ -50,15 +43,15 @@ impl Tui {
                             .alignment(ratatui::layout::Alignment::Center);
                         frame.render_widget(warning, area);
                     } else {
-                        screen.draw(frame, area);
+                        app.draw(frame, area);
                     }
                 }).unwrap();
+                app.check_switch_screen();
             }
         }))
     }
 
     pub fn stop(&mut self) -> anyhow::Result<()> {
-        self.shutdown_handle.store(true, Ordering::Relaxed);
         Ok(())
     }
 }
