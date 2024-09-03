@@ -1,45 +1,42 @@
 use std::sync::{atomic::AtomicBool, Arc};
-
 use ratatui::{
+    crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
     widgets::Paragraph, Frame
 };
+
 use super::super::{common, logo};
 
 const WELLCOME_HEIGHT: u16 = 1;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
-#[derive(Debug, Clone)]
 pub struct WelcomeScreen {
-    shutdown_handle: Arc<AtomicBool>
+    quit_button: common::Button,
+    create_account_button: common::Button,
 }
 
 impl WelcomeScreen {
     pub fn new(shutdown_handle: Arc<AtomicBool>) -> Self {
-        Self { shutdown_handle }
+        let quit_button = common::Button::new("Quit", Some('q'))
+            .action(move || { shutdown_handle.store(true, std::sync::atomic::Ordering::Relaxed); });
+        let create_account_button = common::Button::new("Create User Account", Some('c'));
+
+        Self { quit_button, create_account_button }
     }
 }
 
-impl common::Screen for WelcomeScreen {
-    fn handle_key_event(&self, key_event: ratatui::crossterm::event::KeyEvent) {
-        match key_event.code {
-            ratatui::crossterm::event::KeyCode::Char('q') => {
-                self.shutdown_handle.store(true, std::sync::atomic::Ordering::Relaxed);
-            },
-            ratatui::crossterm::event::KeyCode::Char('c') => {
-                // TODO: next screen
-            },
-            _ => {}
+impl common::Widget for WelcomeScreen {
+    fn handle_event(&mut self, event: Event) -> Option<Event> {
+        let event = self.quit_button.handle_event(event);
+        if let Some(event) = event {
+            return self.create_account_button.handle_event(event);
         }
+        None
     }
 
-    fn handle_mouse_event(&self, _mouse_event: ratatui::crossterm::event::MouseEvent) {
-        // TODO: mouse input
-    }
-
-    fn draw(&self, frame: &mut Frame, area: Rect) {
+    fn draw(&mut self, frame: &mut Frame, area: Rect) {
         let horizontal_padding = (area.width.saturating_sub(logo::BIG_LOGO_WIDTH)) / 2;
     
         let centered_area = Rect {
@@ -85,15 +82,8 @@ impl common::Screen for WelcomeScreen {
             .style(Style::default().fg(Color::Red).bold())
             .alignment(Alignment::Center);
         frame.render_widget(warning_text, content_layout[3]);
-    
-        // Render quit button
-        let shutdown_handle = self.shutdown_handle.clone();
-        let quit_button = common::Button::new("Quit", Some('q'))
-            .action(move || { shutdown_handle.store(true, std::sync::atomic::Ordering::Relaxed); });
-        frame.render_widget(quit_button, buttons_row[0]);
-    
-        // Render create account
-        let create_account_button = common::Button::new("Create User Account", Some('c'));
-        frame.render_widget(create_account_button, buttons_row[1]);
+
+        self.quit_button.draw(frame, buttons_row[0]);
+        self.create_account_button.draw(frame, buttons_row[1]);
     }
 }

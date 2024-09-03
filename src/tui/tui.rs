@@ -5,14 +5,13 @@ use ratatui::{
     prelude::CrosstermBackend, Terminal
 };
 
-use super::{event::EventHandler, common::Screen};
+use super::{event::EventHandler, common::Widget};
 
 const MIN_TERMINAL_WIDTH: u16 = 60;
 const MIN_TERMINAL_HEIGHT: u16 = 12;
 
 pub struct Tui {
     handler: EventHandler,
-    screen: Arc<dyn Screen + Send + Sync>,
     shutdown_handle: Arc<AtomicBool>,
 }
 
@@ -27,30 +26,20 @@ impl Tui {
         }));
 
         let shutdown_handle = Arc::new(AtomicBool::new(false));
-        let screen = Arc::new(super::screens::welcome::WelcomeScreen::new(shutdown_handle.clone()));
 
-        Ok(Self { handler, shutdown_handle, screen })
+        Ok(Self { handler, shutdown_handle })
     }
 
     pub fn run(&self) -> anyhow::Result<tokio::task::JoinHandle<()>> {
-        let shutdown_signal = self.shutdown_handle.clone();
+        let shutdown_handle = self.shutdown_handle.clone();
         let mut events = self.handler.subscribe_events();
         let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stdout()))?;
-        let screen = self.screen.clone();
 
         Ok(tokio::spawn(async move {
-            while !shutdown_signal.load(Ordering::Relaxed) {
+            let mut screen = super::screens::welcome::WelcomeScreen::new(shutdown_handle.clone());
+            while !shutdown_handle.load(Ordering::Relaxed) {
                 if let Ok(event) = events.try_recv() {
-                    match event {
-                        crossterm_event::Event::Key(key_event) => {
-                            screen.handle_key_event(key_event);
-                        },
-                        crossterm_event::Event::Mouse(mouse_event) => {
-                            screen.handle_mouse_event(mouse_event);
-                        },
-                        _ => { continue; },
-                        
-                    }
+                    screen.handle_event(event);
                 }
 
                 terminal.draw(|frame| {
@@ -62,7 +51,6 @@ impl Tui {
                         frame.render_widget(warning, area);
                     } else {
                         screen.draw(frame, area);
-                        //super::welcome_screen::welcome_new_user(f, event_opt, shutdown_signal.clone());
                     }
                 }).unwrap();
             }
