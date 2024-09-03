@@ -1,11 +1,18 @@
 
 use ratatui::{
+    Frame,
     buffer::Buffer,
     crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     layout::Rect,
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, Widget}
 };
+
+pub trait Screen { // TODO: Widget??
+    fn handle_key_event(&self, key_event: KeyEvent);
+    fn handle_mouse_event(&self, mouse_event: MouseEvent);
+    fn draw(&self, frame: &mut Frame, area: ratatui::layout::Rect);
+}
 
 pub struct Button {
     label: String,
@@ -118,3 +125,4 @@ impl Widget for Button {
         buf.set_string(inner_area.x, inner_area.y, &self.label, style);
     }
 }
+

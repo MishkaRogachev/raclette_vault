@@ -5,13 +5,14 @@ use ratatui::{
     prelude::CrosstermBackend, Terminal
 };
 
-use super::event::EventHandler;
+use super::{event::EventHandler, common::Screen};
 
 const MIN_TERMINAL_WIDTH: u16 = 60;
 const MIN_TERMINAL_HEIGHT: u16 = 12;
 
 pub struct Tui {
     handler: EventHandler,
+    screen: Arc<dyn Screen + Send + Sync>,
     shutdown_handle: Arc<AtomicBool>,
 }
 
@@ -26,31 +27,42 @@ impl Tui {
         }));
 
         let shutdown_handle = Arc::new(AtomicBool::new(false));
+        let screen = Arc::new(super::screens::welcome::WelcomeScreen::new(shutdown_handle.clone()));
 
-        Ok(Self { handler, shutdown_handle })
+        Ok(Self { handler, shutdown_handle, screen })
     }
 
     pub fn run(&self) -> anyhow::Result<tokio::task::JoinHandle<()>> {
         let shutdown_signal = self.shutdown_handle.clone();
         let mut events = self.handler.subscribe_events();
         let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stdout()))?;
+        let screen = self.screen.clone();
 
         Ok(tokio::spawn(async move {
             while !shutdown_signal.load(Ordering::Relaxed) {
-                let mut event_opt = None;
                 if let Ok(event) = events.try_recv() {
-                    event_opt = Some(event);
+                    match event {
+                        crossterm_event::Event::Key(key_event) => {
+                            screen.handle_key_event(key_event);
+                        },
+                        crossterm_event::Event::Mouse(mouse_event) => {
+                            screen.handle_mouse_event(mouse_event);
+                        },
+                        _ => { continue; },
+                        
+                    }
                 }
 
-                terminal.draw(|f| {
-                    let area = f.area();
+                terminal.draw(|frame| {
+                    let area = frame.area();
 
                     if area.width < MIN_TERMINAL_WIDTH || area.height < MIN_TERMINAL_HEIGHT {
                         let warning = ratatui::widgets::Paragraph::new("Terminal window is too small")
                             .alignment(ratatui::layout::Alignment::Center);
-                        f.render_widget(warning, area);
+                        frame.render_widget(warning, area);
                     } else {
-                        super::welcome::welcome_new_user(f, event_opt, shutdown_signal.clone());
+                        screen.draw(frame, area);
+                        //super::welcome_screen::welcome_new_user(f, event_opt, shutdown_signal.clone());
                     }
                 }).unwrap();
             }

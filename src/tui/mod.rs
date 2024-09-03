@@ -1,9 +1,7 @@
+pub mod tui;
 pub use self::tui::Tui;
 pub mod event;
-mod button;
+mod common;
 pub mod logo;
-pub mod tui;
-pub mod welcome;
-
-
+pub mod screens;
 
