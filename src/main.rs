@@ -5,7 +5,7 @@ mod tui;
 async fn main() -> anyhow::Result<()> {
     let handler = tui::event::EventHandler::new();
     let tui = tui::Tui::new(handler.clone())?;
-    let app = tui::app::App::new();
+    let app = tui::app::App::new()?;
 
     tokio::select! {
         _ = tui.run(app)? => {},

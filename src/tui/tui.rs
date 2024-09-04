@@ -3,7 +3,7 @@ use ratatui::{
     prelude::CrosstermBackend, Terminal
 };
 
-use super::{app::App, common::Widget, event::EventHandler};
+use super::{app::App, widgets::common::Widget, event::EventHandler};
 
 const MIN_TERMINAL_WIDTH: u16 = 60;
 const MIN_TERMINAL_HEIGHT: u16 = 12;
@@ -46,7 +46,7 @@ impl Tui {
                         app.draw(frame, area);
                     }
                 }).unwrap();
-                app.check_switch_screen();
+                app.check_app_commands().expect("failed to check app commands");
             }
         }))
     }
