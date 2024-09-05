@@ -37,7 +37,7 @@ impl WelcomeScreen {
     }
 }
 
-impl common::Widget for WelcomeScreen {
+impl common::ControlTrait for WelcomeScreen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         [&mut self.quit_button, &mut self.generate_button]
             .iter_mut().fold(Some(event), |event, button| {

@@ -19,7 +19,7 @@ mod tests {
 
     #[test]
     fn test_generate_seed_phrase_to_words_and_back() -> anyhow::Result<()> {
-        let seed_phrase = SeedPhrase::generate_12_words();
+        let seed_phrase = SeedPhrase::generate(bip39::MnemonicType::Words12);
         assert_eq!(seed_phrase.mnemonic.language(), bip39::Language::English);
 
         let words = seed_phrase.to_words();

@@ -8,13 +8,8 @@ pub struct SeedPhrase {
 }
 
 impl SeedPhrase {
-    pub fn generate_12_words() -> Self {
-        let mnemonic = Mnemonic::new(MnemonicType::Words12, Language::English);
-        Self { mnemonic }
-    }
-
-    pub fn generate_24_words() -> Self {
-        let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
+    pub fn generate(mtype: MnemonicType) -> Self {
+        let mnemonic = Mnemonic::new(mtype, Language::English);
         Self { mnemonic }
     }
 

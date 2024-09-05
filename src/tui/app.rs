@@ -17,7 +17,7 @@ pub enum AppCommand {
 }
 
 pub struct App {
-    current_screen: Box<dyn super::widgets::common::Widget + Send>,
+    current_screen: Box<dyn super::widgets::common::ControlTrait + Send>,
     command_tx: mpsc::Sender<AppCommand>,
     command_rx: mpsc::Receiver<AppCommand>,
     running: bool,
@@ -64,7 +64,7 @@ impl App {
     }
 }
 
-impl super::widgets::common::Widget for App {
+impl super::widgets::common::ControlTrait for App {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         if let Event::Key(key_event) = event {
             match key_event.code {
