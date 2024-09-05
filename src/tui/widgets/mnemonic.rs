@@ -9,6 +9,7 @@ use ratatui::{
 };
 
 const WORD_MASKED: &str = "******";
+pub const MNEMONIC_HEIGHT: u16 = 30;
 
 pub struct RevealWords {
     words: Vec<String>,
@@ -18,10 +19,6 @@ pub struct RevealWords {
 impl RevealWords {
     pub fn new(words: Vec<String>, reveal_flag: Arc<AtomicBool>) -> Self {
         Self { words, reveal_flag }
-    }
-
-    pub fn height(&self) -> u16 {
-        (self.words.len() + 2) as u16
     }
 }
 
@@ -34,16 +31,16 @@ impl super::common::ControlTrait for RevealWords {
         let word_count = self.words.len();
         let column_count = if word_count <= 12 { 2 } else { 4 };
         let words_per_column = (word_count + column_count - 1) / column_count;
+        let word_height = std::cmp::max(1, area.height / (words_per_column as u16 - 1));
 
         let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
 
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .horizontal_margin(area.width / column_count as u16 / 2)
-            .vertical_margin(1)
             .constraints([
                 Constraint::Min(0), // Fill height
-                Constraint::Length(self.height()),
+                Constraint::Length(MNEMONIC_HEIGHT),
                 Constraint::Min(0), // Fill height
             ])
             .split(area);
@@ -57,7 +54,6 @@ impl super::common::ControlTrait for RevealWords {
             let start_idx = col_idx * words_per_column;
             let end_idx = std::cmp::min(start_idx + words_per_column, word_count);
             let words_in_column = &self.words[start_idx..end_idx];
-            let word_height = std::cmp::max(1, column_area.height / words_in_column.len() as u16);
 
             let word_layout = Layout::default()
                 .direction(Direction::Vertical)

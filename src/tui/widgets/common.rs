@@ -1,7 +1,7 @@
 
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind},
-    layout::Rect,
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
@@ -29,8 +29,9 @@ pub struct Button {
 }
 
 pub struct Switch {
-    pub on_label: String,
     pub off_label: String,
+    pub on_label: String,
+    pub hotkey: Option<char>,
     pub is_on: bool,
     pub on_toggle: Option<Box<dyn Fn(bool) + Send>>,
     pub control: Control,
@@ -152,40 +153,20 @@ impl ControlTrait for Button {
             (block, style,)
         };
 
-        let label_line = if let Some(hotkey) = self.hotkey {
-            let mut spans = Vec::new();
-            let mut found = false;
-
-            for c in self.label.chars() {
-                if !found && c.to_ascii_lowercase() == hotkey.to_ascii_lowercase() {
-                    // Apply underline modifier to the matching character
-                    spans.push(Span::styled(
-                        c.to_string(),
-                        style.add_modifier(Modifier::UNDERLINED),
-                    ));
-                    found = true;
-                } else {
-                    spans.push(Span::styled(c.to_string(), style));
-                }
-            }
-            Line::from(spans)
-        } else {
-            Line::from(Span::styled(self.label.to_string(), style))
-        };
-
+        let label_line =  render_label_with_hotkey(&self.label, self.hotkey, style);
         let paragraph = Paragraph::new(label_line)
             .block(block)
             .alignment(ratatui::layout::Alignment::Center);
-
         frame.render_widget(paragraph, area);
     }
 }
 
 impl Switch {
-    pub fn new(on_label: &str, off_label: &str) -> Self {
+    pub fn new(off_label: &str, on_label: &str, hotkey: Option<char>) -> Self {
         Switch {
-            on_label: on_label.to_string(),
             off_label: off_label.to_string(),
+            on_label: on_label.to_string(),
+            hotkey,
             is_on: false,
             on_toggle: None,
             control: Control::new(),
@@ -212,13 +193,17 @@ impl Switch {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) -> Option<Event> {
-        if matches!(key_event.code, KeyCode::Char(' ') | KeyCode::Enter) {
-            self.is_on = !self.is_on;
-            if let Some(func) = &self.on_toggle {
-                func(self.is_on);
+        if let Some(hotkey) = self.hotkey {
+            if key_event.code == KeyCode::Char(hotkey) {
+                self.is_on = !self.is_on;
+                if let Some(func) = &self.on_toggle {
+                    func(self.is_on);
+                }
+                return None;
             }
-            return None;
-        }
+        } else {
+            return Some(Event::Key(key_event))
+        };
         Some(Event::Key(key_event))
     }
 }
@@ -235,34 +220,79 @@ impl ControlTrait for Switch {
     fn draw(&mut self, frame: &mut Frame, area: Rect) {
         self.control.area = Some(area);
 
-        let half_width = area.width / 2;
-        let on_area = Rect {
-            x: area.x,
-            y: area.y,
-            width: half_width,
-            height: area.height,
-        };
-        let off_area = Rect {
-            x: area.x + half_width,
-            y: area.y,
-            width: area.width - half_width,
-            height: area.height,
-        };
-
         let active_style = Style::default().fg(Color::Black).bg(Color::Yellow).add_modifier(Modifier::BOLD);
         let inactive_style = Style::default().fg(Color::White);
 
-        let on_paragraph = Paragraph::new(self.on_label.clone())
-            .block(Block::default().borders(Borders::ALL))
-            .style(if !self.is_on { active_style } else { inactive_style })
-            .alignment(ratatui::layout::Alignment::Center);
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Yellow));
+        let inner_area = block.inner(area);
 
-        let off_paragraph = Paragraph::new(self.off_label.clone())
-            .block(Block::default().borders(Borders::ALL))
-            .style(if self.is_on { active_style } else { inactive_style })
-            .alignment(ratatui::layout::Alignment::Center);
+        frame.render_widget(block, area);
 
-        frame.render_widget(on_paragraph, on_area);
+        let column_constraints = [
+            Constraint::Percentage(49),
+            Constraint::Length(1),
+            Constraint::Percentage(49),
+        ];
+
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(column_constraints)
+            .split(inner_area);
+
+        let off_area = layout[0];
+        let separator_area = layout[1];
+        let on_area = layout[2];
+
+        // Render the "OFF" and "ON" labels with respective styles
+        let off_paragraph = Paragraph::new(render_label_with_hotkey(
+            &self.off_label,
+            self.hotkey,
+            if !self.is_on { active_style } else { inactive_style },
+        ))
+        .alignment(ratatui::layout::Alignment::Center)
+        .block(Block::default().borders(Borders::NONE));
+
+        let on_paragraph = Paragraph::new(render_label_with_hotkey(
+            &self.on_label,
+            self.hotkey,
+            if self.is_on { active_style } else { inactive_style },
+        ))
+        .alignment(ratatui::layout::Alignment::Center)
+        .block(Block::default().borders(Borders::NONE));
+
+        // Render the separator in the center
+        let separator_paragraph = Paragraph::new("|")
+            .alignment(ratatui::layout::Alignment::Center)
+            .style(Style::default().fg(Color::Yellow))
+            .block(Block::default().borders(Borders::NONE));
+
+        // Render the OFF label, separator, and ON label in the appropriate areas
         frame.render_widget(off_paragraph, off_area);
+        frame.render_widget(separator_paragraph, separator_area);
+        frame.render_widget(on_paragraph, on_area);
+    }
+}
+
+pub fn render_label_with_hotkey(label: &str, hotkey: Option<char>, style: Style) -> Line<'_> {
+    if let Some(hotkey) = hotkey {
+        let mut spans = Vec::new();
+        let mut found = false;
+
+        for c in label.chars() {
+            if !found && c.to_ascii_lowercase() == hotkey.to_ascii_lowercase() {
+                spans.push(Span::styled(
+                    c.to_string(),
+                    style.add_modifier(Modifier::UNDERLINED),
+                ));
+                found = true;
+            } else {
+                spans.push(Span::styled(c.to_string(), style));
+            }
+        }
+        Line::from(spans)
+    } else {
+        Line::from(Span::styled(label.to_string(), style))
     }
 }
