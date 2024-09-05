@@ -24,11 +24,11 @@ impl WelcomeScreen {
         let quit_button = {
             let command_tx = command_tx.clone();
             common::Button::new("Quit", Some('q'))
-                .action(move || { command_tx.send(AppCommand::Quit).unwrap(); })
+                .on_down(move || { command_tx.send(AppCommand::Quit).unwrap(); })
         };
         let generate_button = {
-            common::Button::new("Create Account", Some('o'))
-                .action(move || {
+            common::Button::new("Generate", Some('g'))
+                .on_down(move || {
                     command_tx.send(AppCommand::SwitchScreen(AppScreenType::Generate)).unwrap();
                 })
         };
@@ -39,11 +39,10 @@ impl WelcomeScreen {
 
 impl common::Widget for WelcomeScreen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
-        let event = self.quit_button.handle_event(event);
-        if let Some(event) = event {
-            return self.generate_button.handle_event(event);
-        }
-        None
+        [&mut self.quit_button, &mut self.generate_button]
+            .iter_mut().fold(Some(event), |event, button| {
+            event.and_then(|e| button.handle_event(e))
+        })
     }
 
     fn draw(&mut self, frame: &mut Frame, area: Rect) {

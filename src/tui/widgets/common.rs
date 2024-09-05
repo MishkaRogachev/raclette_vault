@@ -14,11 +14,13 @@ pub trait Widget {
 }
 
 pub struct Button {
-    label: String,
-    hotkey: Option<char>,
-    action: Option<Box<dyn Fn() + Send>>,
+    pub label: String,
+    pub hotkey: Option<char>,
+    pub color: Color,
+    on_up: Option<Box<dyn Fn() + Send>>,
+    on_down: Option<Box<dyn Fn() + Send>>,
     is_hovered: bool,
-    is_pressed: bool,
+    is_down: bool,
     area: Option<Rect>,
 }
 
@@ -27,15 +29,27 @@ impl Button {
         Button {
             label: label.to_string(),
             hotkey,
-            action: None,
+            color: Color::Yellow,
+            on_up: None,
+            on_down: None,
             is_hovered: false,
-            is_pressed: false,
+            is_down: false,
             area: None,
         }
     }
+    
+    pub fn on_up<F: Fn() + 'static + Send>(mut self, f: F) -> Self {
+        self.on_up = Some(Box::new(f));
+        self
+    }
 
-    pub fn action<F: Fn() + 'static + Send>(mut self, f: F) -> Self {
-        self.action = Some(Box::new(f));
+    pub fn on_down<F: Fn() + 'static + Send>(mut self, f: F) -> Self {
+        self.on_down = Some(Box::new(f));
+        self
+    }
+
+    pub fn warning(mut self) -> Self {
+        self.color = Color::Red;
         self
     }
 
@@ -48,22 +62,40 @@ impl Button {
 
     fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> Option<Event> {
         self.is_hovered = self.contains(mouse_event.column, mouse_event.row);
-        self.is_pressed = mouse_event.kind == MouseEventKind::Down(MouseButton::Left);
-
-        if self.is_hovered && self.is_pressed {
-            if let Some(action) = &self.action {
-                action();
+        if self.is_down && mouse_event.kind == MouseEventKind::Up(MouseButton::Left) {
+            self.is_down = false;
+            if let Some(func) = &self.on_up {
+                func();
+                return None;
+            }
+        } else if self.is_hovered && mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
+            if let Some(func) = &self.on_down {
+                self.is_down = true;
+                func();
                 return None;
             }
         }
         Some(Event::Mouse(mouse_event))
     }
 
-    fn handle_key_event(&self, key_event: KeyEvent) -> Option<Event> {
-        if let Some(hotkey) = self.hotkey {
-            if key_event.code == KeyCode::Char(hotkey) {
-                if let Some(action) = &self.action {
-                    action();
+    fn handle_key_event(&mut self, key_event: KeyEvent) -> Option<Event> {
+        let hotkey = if let Some(hotkey) = self.hotkey {
+            hotkey 
+        } else {
+            return Some(Event::Key(key_event))
+        };
+
+        if key_event.code == KeyCode::Char(hotkey) {
+            if self.is_down {
+                self.is_down = false;
+                if let Some(func) = &self.on_up {
+                    func();
+                    return None;
+                }
+            } else {
+                self.is_down = true;
+                if let Some(func) = &self.on_down {
+                    func();
                     return None;
                 }
             }
@@ -84,13 +116,13 @@ impl Widget for Button {
     fn draw(&mut self, frame: &mut Frame, area: Rect) {
         self.area = Some(area); // Store the button's area for later use
 
-        let block = Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Yellow));
-        let style = Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD);
-        
+        let style = Style::default().fg(self.color).add_modifier(Modifier::BOLD);
+        let block = Block::default().borders(Borders::ALL).border_style(style);
+
         let (block, style) = if self.is_hovered {
             (
                 block,
-                style.bg(Color::Yellow).fg(Color::Black),
+                style.bg(self.color).fg(Color::Black),
             )
         } else {
             (block, style,)

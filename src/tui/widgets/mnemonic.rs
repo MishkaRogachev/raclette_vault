@@ -1,3 +1,5 @@
+use std::sync::{atomic::AtomicBool, Arc};
+
 use ratatui::{
     crossterm::event::Event,
     layout::{Constraint, Direction, Layout, Rect},
@@ -6,13 +8,16 @@ use ratatui::{
     Frame
 };
 
+const WORD_MASKED: &str = "******";
+
 pub struct RevealWords {
     words: Vec<String>,
+    pub reveal_flag: Arc<AtomicBool>,
 }
 
 impl RevealWords {
-    pub fn new(words: Vec<String>) -> Self {
-        Self { words }
+    pub fn new(words: Vec<String>, reveal_flag: Arc<AtomicBool>) -> Self {
+        Self { words, reveal_flag }
     }
 
     pub fn height(&self) -> u16 {
@@ -46,13 +51,17 @@ impl super::common::Widget for RevealWords {
 
         let word_height = std::cmp::max(1, area.height / (half as u16 - 1));
 
+        let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
         for (i, word) in Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![Constraint::Length(word_height); first_column_words.len()])
             .split(columns_layout[0])
             .iter()
             .enumerate() {
-            frame.render_widget(render_centered_word(&first_column_words[i]), *word);
+            frame.render_widget(render_centered_word(
+                if revealed { &first_column_words[i]} else { WORD_MASKED }),
+                *word
+            );
         }
 
         for (i, word) in Layout::default()
@@ -61,7 +70,10 @@ impl super::common::Widget for RevealWords {
             .split(columns_layout[1])
             .iter()
             .enumerate() {
-            frame.render_widget(render_centered_word(&second_column_words[i]), *word);
+            frame.render_widget(render_centered_word(
+                if revealed { &second_column_words[i]} else { WORD_MASKED }),
+                *word
+            );
         }
     }
 }

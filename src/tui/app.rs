@@ -50,7 +50,7 @@ impl App {
                         },
                         AppScreenType::Generate => {
                             self.current_screen = Box::new(
-                                super::screens::generate::GenerateKeypairScreen::new(self.command_tx.clone())?
+                                super::screens::generate::GeneratePhraseScreen::new(self.command_tx.clone())?
                             );
                         },
                     }

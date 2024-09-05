@@ -1,12 +1,12 @@
 use ratatui::{
-    crossterm::{event as crossterm_event, terminal, ExecutableCommand},
+    crossterm::{event::{self as crossterm_event}, terminal, ExecutableCommand},
     prelude::CrosstermBackend, Terminal
 };
 
 use super::{app::App, widgets::common::Widget, event::EventHandler};
 
 const MIN_TERMINAL_WIDTH: u16 = 60;
-const MIN_TERMINAL_HEIGHT: u16 = 12;
+const MIN_TERMINAL_HEIGHT: u16 = 14;
 
 pub struct Tui {
     handler: EventHandler,
@@ -67,6 +67,11 @@ fn setup_terminal() -> anyhow::Result<()> {
     terminal::enable_raw_mode()?;
     std::io::stdout().execute(terminal::EnterAlternateScreen)?;
     std::io::stdout().execute(crossterm_event::EnableMouseCapture)?;
+    std::io::stdout().execute(crossterm_event::PopKeyboardEnhancementFlags)?;
+    std::io::stdout().execute(crossterm_event::PushKeyboardEnhancementFlags(
+        crossterm_event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+        | crossterm_event::KeyboardEnhancementFlags::REPORT_EVENT_TYPES
+    ))?;
     Ok(())
 }
 
@@ -74,5 +79,6 @@ fn restore_terminal() -> anyhow::Result<()> {
     terminal::disable_raw_mode()?;
     std::io::stdout().execute(crossterm_event::DisableMouseCapture)?;
     std::io::stdout().execute(terminal::LeaveAlternateScreen)?;
+    std::io::stdout().execute(crossterm_event::PopKeyboardEnhancementFlags)?;
     Ok(())
 }
