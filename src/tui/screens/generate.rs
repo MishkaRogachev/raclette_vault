@@ -6,9 +6,9 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::core::{key_pair::KeyPair, seed_phrase::SeedPhrase};
+use crate::core::seed_phrase::SeedPhrase;
 use crate::tui::app::{AppCommand, AppScreenType};
-use super::super::widgets::{common, seed_phrase};
+use super::super::widgets::{common, mnemonic};
 
 const ONBOARDING_WIDTH: u16 = 60;
 const INTRO_HEIGHT: u16 = 2;
@@ -17,17 +17,16 @@ const OUTRO_HEIGHT: u16 = 2;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 pub struct GenerateKeypairScreen {
-    keypair: KeyPair,
-    seed_phrase: seed_phrase::RevealSeedPhrase,
+    seed_phrase: SeedPhrase,
+    reveal_words: mnemonic::RevealWords,
     back_button: common::Button,
     next_button: common::Button,
 }
 
 impl GenerateKeypairScreen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>) -> anyhow::Result<Self> {
-        let keypair = KeyPair::new();
-        let phrase = SeedPhrase::from_keypair(&keypair)?;
-        let seed_phrase = seed_phrase::RevealSeedPhrase::new(phrase.to_string());
+        let seed_phrase = SeedPhrase::generate_12_words();
+        let reveal_words = mnemonic::RevealWords::new(seed_phrase.to_words());
 
         let back_button = {
             let command_tx = command_tx.clone();
@@ -37,13 +36,13 @@ impl GenerateKeypairScreen {
                 })
         };
         let next_button = {
-            common::Button::new("Next", Some('n'))
+            common::Button::new("Save keypair", Some('n'))
                 .action(move || {
                     // command_tx.blocking_send(AppCommand::SwitchScreen(AppScreenType::Secure)).unwrap();
                 })
         };
 
-        Ok(Self { keypair, seed_phrase, back_button, next_button })
+        Ok(Self { seed_phrase, reveal_words, back_button, next_button })
     }
 }
 
@@ -71,7 +70,7 @@ impl common::Widget for GenerateKeypairScreen {
             .constraints([
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
-                Constraint::Length(seed_phrase::SEED_PHRASE_HEIGHT),
+                Constraint::Length(self.reveal_words.height()),
                 Constraint::Length(WARNING_HEIGHT),
                 Constraint::Length(OUTRO_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
@@ -80,15 +79,15 @@ impl common::Widget for GenerateKeypairScreen {
             .split(centered_area);
 
         let intro_text = Paragraph::new(
-            "Your keypair has been successfully created!")
+            "Your seed phrase has been successfully created!")
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
         frame.render_widget(intro_text, content_layout[1]);
 
-        self.seed_phrase.draw(frame, content_layout[2]);
+        self.reveal_words.draw(frame, content_layout[2]);
 
         let warning_text = Paragraph::new(
-            "Be cautious when revealing your 24-word seed phrase.")
+            "Be cautious when revealing seen phrase!")
             .style(Style::default().fg(Color::Red).bold())
             .alignment(Alignment::Center);
         frame.render_widget(warning_text, content_layout[3]);

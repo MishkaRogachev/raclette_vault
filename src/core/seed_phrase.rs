@@ -1,24 +1,54 @@
-use bip39::Mnemonic;
+use bip39::{Mnemonic, MnemonicType, Language};
 
 use super::key_pair::KeyPair;
 
+#[derive(Debug)]
 pub struct SeedPhrase {
     pub mnemonic: Mnemonic,
 }
 
 impl SeedPhrase {
+    pub fn generate_12_words() -> Self {
+        let mnemonic = Mnemonic::new(MnemonicType::Words12, Language::English);
+        Self { mnemonic }
+    }
+
+    pub fn generate_24_words() -> Self {
+        let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
+        Self { mnemonic }
+    }
+
     pub fn from_keypair(keypair: &KeyPair) -> anyhow::Result<Self> {
-        let mnemonic = bip39::Mnemonic::from_entropy(&keypair.secret_key)?;
+        let mnemonic = bip39::Mnemonic::from_entropy(&keypair.secret_key, Language::English)?;
         Ok(Self { mnemonic })
     }
 
     pub fn to_keypair(&self) -> anyhow::Result<KeyPair> {
-        let (entropy, entropy_len) = self.mnemonic.to_entropy_array();
-        let secret_key = secp256k1::SecretKey::from_slice(&entropy[..entropy_len.min(32)])?;
+        let entropy = self.mnemonic.entropy();
+        let secret_key = secp256k1::SecretKey::from_slice(entropy)?;
         KeyPair::from_secret_key(secret_key)
+    }
+
+    pub fn from_string(s: &str) -> anyhow::Result<Self> {
+        let mnemonic = Mnemonic::from_phrase(s, Language::English)?;
+        Ok(Self { mnemonic })
     }
 
     pub fn to_string(&self) -> String {
         self.mnemonic.to_string()
+    }
+
+    pub fn from_words(words: Vec<String>) -> anyhow::Result<Self> {
+        Self::from_string(words.join(" ").as_str())
+    }
+
+    pub fn to_words(&self) -> Vec<String> {
+        self.mnemonic.to_string().split(' ').map(|s| s.to_string()).collect()
+    }
+}
+
+impl PartialEq for SeedPhrase {
+    fn eq(&self, other: &Self) -> bool {
+        (self.mnemonic.entropy() == other.mnemonic.entropy())
     }
 }
