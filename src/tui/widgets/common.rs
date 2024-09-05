@@ -85,6 +85,11 @@ impl Button {
         self
     }
 
+    pub fn primary(mut self) -> Self {
+        self.color = Color::White;
+        self
+    }
+
     fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> Option<Event> {
         self.control.is_hovered = self.control.contains(mouse_event.column, mouse_event.row);
         if self.control.is_down && mouse_event.kind == MouseEventKind::Up(MouseButton::Left) {
@@ -111,18 +116,9 @@ impl Button {
         };
 
         if key_event.code == KeyCode::Char(hotkey) {
-            if self.control.is_down {
-                self.control.is_down = false;
-                if let Some(func) = &self.on_up {
-                    func();
-                    return None;
-                }
-            } else {
-                self.control.is_down = true;
-                if let Some(func) = &self.on_down {
-                    func();
-                    return None;
-                }
+            if let Some(func) = &self.on_down {
+                func();
+                return None;
             }
         }
         Some(Event::Key(key_event))

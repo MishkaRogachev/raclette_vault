@@ -18,11 +18,13 @@ const BUTTONS_ROW_HEIGHT: u16 = 3;
 pub struct GeneratePhraseScreen {
     seed_phrase: SeedPhrase,
     word_cnt_rx: mpsc::Receiver<bip39::MnemonicType>,
+    reveal_flag: Arc<AtomicBool>,
 
     word_cnt_switch: common::Switch,
     reveal_words: mnemonic::RevealWords,
     back_button: common::Button,
     reveal_button: common::Button,
+    hide_button: common::Button,
     next_button: common::Button,
 }
 
@@ -50,15 +52,20 @@ impl GeneratePhraseScreen {
                 })
         };
         let reveal_button = {
+            let reveal_flag = reveal_flag.clone();
             common::Button::new("Reveal", Some('r'))
-                .on_up({
-                    let reveal_flag = reveal_flag.clone();
-                    move || { reveal_flag.store(false, std::sync::atomic::Ordering::Relaxed); }
-                })
                 .on_down(move || {
                     reveal_flag.store(true, std::sync::atomic::Ordering::Relaxed);
                 })
                 .warning()
+        };
+        let hide_button = {
+            let reveal_flag = reveal_flag.clone();
+            common::Button::new("Hide", Some('h'))
+                .on_down(move || {
+                    reveal_flag.store(false, std::sync::atomic::Ordering::Relaxed);
+                })
+                .primary()
         };
 
         let next_button = {
@@ -68,7 +75,17 @@ impl GeneratePhraseScreen {
                 })
         };
 
-        Ok(Self { seed_phrase, word_cnt_rx, word_cnt_switch, reveal_words, back_button, reveal_button, next_button })
+        Ok(Self {
+            seed_phrase,
+            word_cnt_rx,
+            reveal_flag,
+            word_cnt_switch,
+            reveal_words,
+            back_button,
+            reveal_button,
+            hide_button,
+            next_button
+        })
     }
 
     fn generate(&mut self, mtype: bip39::MnemonicType) {
@@ -79,11 +96,12 @@ impl GeneratePhraseScreen {
 
 impl common::ControlTrait for GeneratePhraseScreen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
+        let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
         let mut controls: Vec<&mut dyn ControlTrait> = vec![
-            &mut self.back_button,
-            &mut self.reveal_button,
-            &mut self.next_button,
             &mut self.word_cnt_switch,
+            &mut self.back_button,
+            if revealed { &mut self.hide_button } else { &mut self.reveal_button },
+            &mut self.next_button
         ];
         controls.iter_mut().fold(Some(event), |event, button| {
             event.and_then(|e| button.handle_event(e))
@@ -135,7 +153,11 @@ impl common::ControlTrait for GeneratePhraseScreen {
         .split(content_layout[4]);
 
         self.back_button.draw(frame, buttons_row[0]);
-        self.reveal_button.draw(frame, buttons_row[1]);
+
+        let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
+        let btn = if revealed { &mut self.hide_button } else { &mut self.reveal_button };;
+        btn.draw(frame, buttons_row[1]);
+
         self.next_button.draw(frame, buttons_row[2]);
     }
 }
