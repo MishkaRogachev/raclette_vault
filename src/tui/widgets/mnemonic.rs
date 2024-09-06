@@ -22,7 +22,7 @@ impl RevealWords {
     }
 }
 
-impl super::common::ControlTrait for RevealWords {
+impl super::common::Widget for RevealWords {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         Some(event)
     }

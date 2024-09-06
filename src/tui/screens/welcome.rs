@@ -7,7 +7,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::tui::app::{AppCommand, AppScreenType};
+use crate::tui::app::AppCommand;
 use super::super::{widgets::common, logo};
 
 const WELLCOME_HEIGHT: u16 = 1;
@@ -20,7 +20,7 @@ pub struct WelcomeScreen {
 }
 
 impl WelcomeScreen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>) -> anyhow::Result<Self> {
+    pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
         let quit_button = {
             let command_tx = command_tx.clone();
             common::Button::new("Quit", Some('q'))
@@ -29,15 +29,16 @@ impl WelcomeScreen {
         let generate_button = {
             common::Button::new("Generate", Some('g'))
                 .on_down(move || {
-                    command_tx.send(AppCommand::SwitchScreen(AppScreenType::Generate)).unwrap();
+                    let generate_screeen = Box::new(super::generate::GeneratePhraseScreen::new(command_tx.clone()));
+                    command_tx.send(AppCommand::SwitchScreen(generate_screeen)).unwrap();
                 })
         };
 
-        Ok(Self { quit_button, generate_button })
+        Self { quit_button, generate_button }
     }
 }
 
-impl common::ControlTrait for WelcomeScreen {
+impl common::Widget for WelcomeScreen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         [&mut self.quit_button, &mut self.generate_button]
             .iter_mut().fold(Some(event), |event, button| {

@@ -3,7 +3,7 @@ use ratatui::{
     prelude::CrosstermBackend, Terminal
 };
 
-use super::{app::App, widgets::common::ControlTrait, event::EventHandler};
+use super::{app::App, widgets::common::Widget, event::EventHandler};
 
 const MIN_TERMINAL_WIDTH: u16 = 60;
 const MIN_TERMINAL_HEIGHT: u16 = 14;

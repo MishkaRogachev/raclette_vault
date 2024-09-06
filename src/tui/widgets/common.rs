@@ -8,7 +8,7 @@ use ratatui::{
     Frame
 };
 
-pub trait ControlTrait {
+pub trait Widget {
     fn handle_event(&mut self, event: Event) -> Option<Event>;
     fn draw(&mut self, frame: &mut Frame, area: ratatui::layout::Rect);
 }
@@ -125,7 +125,7 @@ impl Button {
     }
 }
 
-impl ControlTrait for Button {
+impl Widget for Button {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         match event {
             Event::Mouse(mouse_event) => self.handle_mouse_event(mouse_event),
@@ -204,7 +204,7 @@ impl Switch {
     }
 }
 
-impl ControlTrait for Switch {
+impl Widget for Switch {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         match event {
             Event::Mouse(mouse_event) => self.handle_mouse_event(mouse_event),

@@ -6,8 +6,8 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::{core::seed_phrase::SeedPhrase, tui::widgets::{common::ControlTrait, mnemonic::MNEMONIC_HEIGHT}};
-use crate::tui::app::{AppCommand, AppScreenType};
+use crate::{core::seed_phrase::SeedPhrase, tui::widgets::{common::Widget, mnemonic::MNEMONIC_HEIGHT}};
+use crate::tui::app::AppCommand;
 use super::super::widgets::{common, mnemonic};
 
 const ONBOARDING_WIDTH: u16 = 80;
@@ -16,6 +16,7 @@ const SWITCH_HEIGHT: u16 = 3;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 pub struct GeneratePhraseScreen {
+    // FIXME: Keypair -> SeedPhrase
     seed_phrase: SeedPhrase,
     word_cnt_rx: mpsc::Receiver<bip39::MnemonicType>,
     reveal_flag: Arc<AtomicBool>,
@@ -29,7 +30,7 @@ pub struct GeneratePhraseScreen {
 }
 
 impl GeneratePhraseScreen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>) -> anyhow::Result<Self> {
+    pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
         let seed_phrase = SeedPhrase::generate(bip39::MnemonicType::Words12);
         let reveal_flag = Arc::new(AtomicBool::new(false));
         let reveal_words = mnemonic::RevealWords::new(seed_phrase.to_words(), reveal_flag.clone());
@@ -48,7 +49,8 @@ impl GeneratePhraseScreen {
             let command_tx = command_tx.clone();
             common::Button::new("Back", Some('b'))
                 .on_down(move || {
-                    command_tx.send(AppCommand::SwitchScreen(AppScreenType::Welcome)).unwrap();
+                    let welcome_screeen = Box::new(super::welcome::WelcomeScreen::new(command_tx.clone()));
+                    command_tx.send(AppCommand::SwitchScreen(welcome_screeen)).unwrap();
                 })
         };
         let reveal_button = {
@@ -75,7 +77,7 @@ impl GeneratePhraseScreen {
                 })
         };
 
-        Ok(Self {
+        Self {
             seed_phrase,
             word_cnt_rx,
             reveal_flag,
@@ -85,7 +87,7 @@ impl GeneratePhraseScreen {
             reveal_button,
             hide_button,
             next_button
-        })
+        }
     }
 
     fn generate(&mut self, mtype: bip39::MnemonicType) {
@@ -94,10 +96,10 @@ impl GeneratePhraseScreen {
     }
 }
 
-impl common::ControlTrait for GeneratePhraseScreen {
+impl common::Widget for GeneratePhraseScreen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
-        let mut controls: Vec<&mut dyn ControlTrait> = vec![
+        let mut controls: Vec<&mut dyn Widget> = vec![
             &mut self.word_cnt_switch,
             &mut self.back_button,
             if revealed { &mut self.hide_button } else { &mut self.reveal_button },
