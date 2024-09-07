@@ -8,7 +8,7 @@ use ratatui::{
 use super::{app::App, widgets::common::Widget};
 
 const MIN_TERMINAL_WIDTH: u16 = 60;
-const MIN_TERMINAL_HEIGHT: u16 = 14;
+const MIN_TERMINAL_HEIGHT: u16 = 13;
 
 pub struct Tui {
     shutdown_handle: Arc<AtomicBool>,

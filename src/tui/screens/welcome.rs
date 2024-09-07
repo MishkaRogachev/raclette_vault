@@ -10,7 +10,6 @@ use ratatui::{
 use crate::tui::app::AppCommand;
 use super::super::{widgets::common, logo};
 
-const WELLCOME_HEIGHT: u16 = 1;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
@@ -61,7 +60,6 @@ impl common::Widget for WelcomeScreen {
             .constraints([
                 Constraint::Min(0), // Fill height
                 Constraint::Length(logo::BIG_LOGO_HEIGHT),
-                Constraint::Length(WELLCOME_HEIGHT),
                 Constraint::Length(WARNING_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
                 Constraint::Min(0), // Fill height
@@ -70,15 +68,10 @@ impl common::Widget for WelcomeScreen {
 
         logo::big_logo(content_layout[1], frame);
 
-        let welcome_text = Paragraph::new("Welcome to Raclette Vault!")
-            .style(Style::default().fg(Color::Yellow))
-            .alignment(Alignment::Center);
-        frame.render_widget(welcome_text, content_layout[2]);
-
         let warning_text = Paragraph::new("Please don't use this wallet for real crypto!")
             .style(Style::default().fg(Color::Red).bold())
             .alignment(Alignment::Center);
-        frame.render_widget(warning_text, content_layout[3]);
+        frame.render_widget(warning_text, content_layout[2]);
 
         let buttons_row = Layout::default()
             .direction(Direction::Horizontal)
@@ -86,7 +79,7 @@ impl common::Widget for WelcomeScreen {
                 Constraint::Percentage(30),
                 Constraint::Percentage(70),
             ])
-            .split(content_layout[4]);
+            .split(content_layout[3]);
 
         self.quit_button.draw(frame, buttons_row[0]);
         self.generate_button.draw(frame, buttons_row[1]);
