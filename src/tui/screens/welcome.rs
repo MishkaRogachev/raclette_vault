@@ -28,7 +28,7 @@ impl WelcomeScreen {
         let generate_button = {
             common::Button::new("Generate", Some('g'))
                 .on_down(move || {
-                    let generate_screeen = Box::new(super::generate::GeneratePhraseScreen::new(command_tx.clone()));
+                    let generate_screeen = Box::new(super::generate::GenerateMnemonicScreen::new(command_tx.clone()));
                     command_tx.send(AppCommand::SwitchScreen(generate_screeen)).unwrap();
                 })
         };

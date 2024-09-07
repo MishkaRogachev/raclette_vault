@@ -17,8 +17,8 @@ pub struct RevealWords {
 }
 
 impl RevealWords {
-    pub fn new(words: Vec<String>, reveal_flag: Arc<AtomicBool>) -> Self {
-        Self { words, reveal_flag }
+    pub fn new(reveal_flag: Arc<AtomicBool>) -> Self {
+        Self { words: vec![], reveal_flag }
     }
 
     pub fn set_words(&mut self, words: Vec<String>) {

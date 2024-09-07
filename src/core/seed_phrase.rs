@@ -11,6 +11,10 @@ impl SeedPhrase {
         Self { mnemonic }
     }
 
+    pub fn switch_mnemonic_type(&mut self, mtype: MnemonicType) {
+        self.mnemonic = Mnemonic::new(mtype, Language::English);
+    }
+
     pub fn to_seed(&self, password: &str) -> Seed {
         Seed::new(&self.mnemonic, password)
     }

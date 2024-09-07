@@ -1,0 +1,94 @@
+
+use std::sync::mpsc;
+use ratatui::{
+    crossterm::event::Event,
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    style::{Color, Style, Stylize},
+    widgets::Paragraph, Frame
+};
+
+use crate::core::key_pair::KeyPair;
+use crate::tui::app::AppCommand;
+
+use super::super::widgets::common;
+
+const SECURE_WIDTH: u16 = 80;
+const INTRO_HEIGHT: u16 = 1;
+const BUTTONS_ROW_HEIGHT: u16 = 3;
+
+pub struct SecureKeypairScreen {
+    keypair: KeyPair,
+    back_button: common::Button,
+    save_button: common::Button,
+}
+
+impl SecureKeypairScreen {
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, keypair: KeyPair) -> Self {
+        let back_button = {
+            let command_tx = command_tx.clone();
+            common::Button::new("Back", Some('b'))
+                .on_down(move || {
+                    let welcome_screeen = Box::new(super::welcome::WelcomeScreen::new(command_tx.clone()));
+                    command_tx.send(AppCommand::SwitchScreen(welcome_screeen)).unwrap();
+                })
+        };
+
+        let save_button = {
+            //let command_tx = command_tx.clone();
+            common::Button::new("Save", Some('b'))
+                .on_down(move || {
+                    // let welcome_screeen = Box::new(super::welcome::WelcomeScreen::new(command_tx.clone()));
+                    // command_tx.send(AppCommand::SwitchScreen(welcome_screeen)).unwrap();
+                })
+        };
+
+        Self { keypair, back_button, save_button }
+    }
+}
+
+impl common::Widget for SecureKeypairScreen {
+    fn handle_event(&mut self, event: Event) -> Option<Event> {
+        vec![&mut self.back_button, &mut self.save_button]
+            .iter_mut().fold(Some(event), |event, button| {
+            event.and_then(|e| button.handle_event(e))
+        })
+    }
+
+    fn draw(&mut self, frame: &mut Frame, area: Rect) {
+        let horizontal_padding = (area.width.saturating_sub(SECURE_WIDTH)) / 2;
+
+        let centered_area = Rect {
+            x: horizontal_padding,
+            y: area.y,
+            width: SECURE_WIDTH,
+            height: area.height,
+        };
+
+        let content_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(0), // Fill height
+                Constraint::Length(INTRO_HEIGHT),
+                Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Min(0), // Fill height
+            ])
+            .split(centered_area);
+
+        let intro_text = Paragraph::new(
+            "Now let's secure your keypair with a password")
+            .style(Style::default().fg(Color::Yellow).bold())
+            .alignment(Alignment::Center);
+        frame.render_widget(intro_text, content_layout[1]);
+
+        let buttons_row = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(50),
+            Constraint::Percentage(50),
+        ])
+        .split(content_layout[2]);
+
+        self.back_button.draw(frame, buttons_row[0]);
+        self.save_button.draw(frame, buttons_row[1]);
+    }
+}
