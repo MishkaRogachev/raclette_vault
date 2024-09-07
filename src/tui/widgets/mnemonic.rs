@@ -31,7 +31,7 @@ impl super::common::Widget for RevealWords {
         let word_count = self.words.len();
         let column_count = if word_count <= 12 { 2 } else { 4 };
         let words_per_column = (word_count + column_count - 1) / column_count;
-        let word_height = std::cmp::max(1, area.height / (words_per_column as u16 - 1));
+        let word_height = std::cmp::max(1, area.height / (words_per_column as u16));
 
         let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
 

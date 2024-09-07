@@ -157,7 +157,7 @@ impl common::Widget for GeneratePhraseScreen {
         self.back_button.draw(frame, buttons_row[0]);
 
         let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
-        let btn = if revealed { &mut self.hide_button } else { &mut self.reveal_button };;
+        let btn = if revealed { &mut self.hide_button } else { &mut self.reveal_button };
         btn.draw(frame, buttons_row[1]);
 
         self.next_button.draw(frame, buttons_row[2]);

@@ -69,7 +69,8 @@ impl Button {
             control: Control::new(),
         }
     }
-    
+
+    #[allow(dead_code)]
     pub fn on_up<F: Fn() + 'static + Send>(mut self, f: F) -> Self {
         self.on_up = Some(Box::new(f));
         self
