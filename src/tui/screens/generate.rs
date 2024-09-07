@@ -6,7 +6,8 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::{core::seed_phrase::SeedPhrase, tui::widgets::{common::Widget, mnemonic::MNEMONIC_HEIGHT}};
+use crate::core::seed_phrase::SeedPhrase;
+use crate::tui::widgets::{common::Widget, mnemonic::MNEMONIC_HEIGHT};
 use crate::tui::app::AppCommand;
 use super::super::widgets::{common, mnemonic};
 
@@ -16,7 +17,6 @@ const SWITCH_HEIGHT: u16 = 3;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 pub struct GeneratePhraseScreen {
-    // FIXME: Keypair -> SeedPhrase
     seed_phrase: SeedPhrase,
     word_cnt_rx: mpsc::Receiver<bip39::MnemonicType>,
     reveal_flag: Arc<AtomicBool>,
@@ -71,7 +71,7 @@ impl GeneratePhraseScreen {
         };
 
         let next_button = {
-            common::Button::new("Save keypair", Some('n'))
+            common::Button::new("To keypair", Some('n'))
                 .on_down(move || {
                     // command_tx.blocking_send(AppCommand::SwitchScreen(AppScreenType::Secure)).unwrap();
                 })
@@ -90,9 +90,9 @@ impl GeneratePhraseScreen {
         }
     }
 
-    fn generate(&mut self, mtype: bip39::MnemonicType) {
+    fn switch_mnemonic_type(&mut self, mtype: bip39::MnemonicType) {
         self.seed_phrase = SeedPhrase::generate(mtype);
-        self.reveal_words = mnemonic::RevealWords::new(self.seed_phrase.to_words(), self.reveal_words.reveal_flag.clone());
+        self.reveal_words.set_words(self.seed_phrase.to_words());
     }
 }
 
@@ -112,7 +112,7 @@ impl common::Widget for GeneratePhraseScreen {
 
     fn draw(&mut self, frame: &mut Frame, area: Rect) {
         if let Ok(mtype) = self.word_cnt_rx.try_recv() {
-            self.generate(mtype);
+            self.switch_mnemonic_type(mtype);
         }
 
         let horizontal_padding = (area.width.saturating_sub(ONBOARDING_WIDTH)) / 2;

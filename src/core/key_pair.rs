@@ -1,5 +1,7 @@
+use bip39::Seed;
 use secp256k1::{Secp256k1, rand::{rngs::{JitterRng, StdRng}, SeedableRng, RngCore}};
 use rand::rngs::OsRng;
+use zeroize::Zeroizing;
 
 pub const SECRET_KEY_LEN: usize = secp256k1::constants::SECRET_KEY_SIZE;
 pub const PUBLIC_KEY_LEN: usize = secp256k1::constants::PUBLIC_KEY_SIZE;
@@ -9,40 +11,32 @@ const ERR_PUBLIC_KEY_CONVERT: &str = "Failed to convert public_key";
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyPair {
-    pub secret_key: [u8; SECRET_KEY_LEN],
-    pub public_key: [u8; PUBLIC_KEY_LEN],
+    pub secret_key: Zeroizing<[u8; SECRET_KEY_LEN]>,
+    pub public_key: Zeroizing<[u8; PUBLIC_KEY_LEN]>,
 }
 
 impl KeyPair {
-    pub fn new() -> Self {
+    pub fn from_seed(seed: Seed) -> anyhow::Result<Self> {
         let secp = Secp256k1::new();
-        let mut jitter_rng = JitterRng::new_with_timer(get_nstime);
+        let seed_bytes = seed.as_bytes();
 
-        let mut seed = [0u8; 32];
-        // Fill the first half with OsRng
-        rand::RngCore::fill_bytes(&mut OsRng, &mut seed[..16]);
-        // Fill the second half with JitterRng
-        RngCore::fill_bytes(&mut jitter_rng, &mut seed[16..]);
-
-        // Seed StdRng with the combined entropy
-        let mut combined_rng = <StdRng as SeedableRng>::from_seed(seed);
-        let (secret_key, public_key) = secp.generate_keypair(&mut combined_rng);
-
-        Self::from_secp256k1(secret_key, public_key)
-    }
-
-    pub fn from_secret_key(secret_key: secp256k1::SecretKey) -> anyhow::Result<Self> {
-        let secp = Secp256k1::new();
-        // Derive the public key from the secret key
+        let secret_key = secp256k1::SecretKey::from_slice(&seed_bytes[..32])?;
         let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
 
         Ok(Self::from_secp256k1(secret_key, public_key))
     }
 
+    pub fn from_secret_key(secret_key: secp256k1::SecretKey) -> Self {
+        let secp = Secp256k1::new();
+        let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
+
+        Self::from_secp256k1(secret_key, public_key)
+    }
+
     pub fn from_secp256k1(secret_key: secp256k1::SecretKey, public_key: secp256k1::PublicKey) -> Self {
         Self {
-            secret_key: secret_key[..].try_into().expect(&err_secret_key_len()),
-            public_key: public_key.serialize()
+            secret_key: Zeroizing::new(secret_key[..].try_into().expect(&err_secret_key_len())),
+            public_key: Zeroizing::new(public_key.serialize())
         }
     }
 
@@ -94,8 +88,8 @@ impl<'de> serde::Deserialize<'de> for KeyPair {
         }
 
         Ok(KeyPair {
-            secret_key: secret_key.try_into().expect(ERR_SECRET_KEY_CONVERT),
-            public_key: public_key.try_into().expect(ERR_PUBLIC_KEY_CONVERT),
+            secret_key: Zeroizing::new(secret_key.try_into().expect(ERR_SECRET_KEY_CONVERT)),
+            public_key: Zeroizing::new(public_key.try_into().expect(ERR_PUBLIC_KEY_CONVERT)),
         })
     }
 }

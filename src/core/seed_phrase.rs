@@ -1,6 +1,4 @@
-use bip39::{Mnemonic, MnemonicType, Language};
-
-use super::key_pair::KeyPair;
+use bip39::{Language, Mnemonic, MnemonicType, Seed};
 
 #[derive(Debug)]
 pub struct SeedPhrase {
@@ -13,15 +11,8 @@ impl SeedPhrase {
         Self { mnemonic }
     }
 
-    pub fn from_keypair(keypair: &KeyPair) -> anyhow::Result<Self> {
-        let mnemonic = bip39::Mnemonic::from_entropy(&keypair.secret_key, Language::English)?;
-        Ok(Self { mnemonic })
-    }
-
-    pub fn to_keypair(&self) -> anyhow::Result<KeyPair> {
-        let entropy = self.mnemonic.entropy();
-        let secret_key = secp256k1::SecretKey::from_slice(entropy)?;
-        KeyPair::from_secret_key(secret_key)
+    pub fn to_seed(&self, password: &str) -> Seed {
+        Seed::new(&self.mnemonic, password)
     }
 
     pub fn from_string(s: &str) -> anyhow::Result<Self> {
@@ -44,6 +35,6 @@ impl SeedPhrase {
 
 impl PartialEq for SeedPhrase {
     fn eq(&self, other: &Self) -> bool {
-        (self.mnemonic.entropy() == other.mnemonic.entropy())
+        self.mnemonic.entropy() == other.mnemonic.entropy()
     }
 }

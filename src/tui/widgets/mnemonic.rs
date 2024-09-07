@@ -20,6 +20,10 @@ impl RevealWords {
     pub fn new(words: Vec<String>, reveal_flag: Arc<AtomicBool>) -> Self {
         Self { words, reveal_flag }
     }
+
+    pub fn set_words(&mut self, words: Vec<String>) {
+        self.words = words;
+    }
 }
 
 impl super::common::Widget for RevealWords {
