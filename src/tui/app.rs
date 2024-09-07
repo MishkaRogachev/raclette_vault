@@ -1,4 +1,5 @@
-use std::sync::mpsc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Arc};
 use ratatui::{crossterm::event::Event, layout::Rect, Frame};
 
 use super::widgets::common::Widget;
@@ -10,34 +11,34 @@ pub enum AppCommand {
 }
 
 pub struct App {
+    shutdown_handle: Arc<AtomicBool>,
     current_screen: Box<dyn Widget + Send>,
     command_rx: mpsc::Receiver<AppCommand>,
-    running: bool,
+    events: tokio::sync::broadcast::Receiver<Event>
 }
 
 impl App {
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new(shutdown_handle: Arc<AtomicBool>, events: tokio::sync::broadcast::Receiver<Event>) -> anyhow::Result<Self> {
         let (command_tx, command_rx) = mpsc::channel();
         let current_screen = Box::new(welcome::WelcomeScreen::new(command_tx.clone()));
-        Ok(Self { current_screen, command_rx, running: true })
+        Ok(Self { shutdown_handle, current_screen, command_rx, events })
     }
 
-    pub fn is_running(&self) -> bool {
-        self.running
-    }
+    pub fn process_events(&mut self) {
+        if let Ok(event) = self.events.try_recv() {
+            self.handle_event(event);
+        }
 
-    pub fn check_app_commands(&mut self) -> anyhow::Result<()> {
         if let Ok(command) = self.command_rx.try_recv() {
             match command {
                 AppCommand::SwitchScreen(screen) => {
                     self.current_screen = screen;
                 },
                 AppCommand::Quit => {
-                    self.running = false;
+                    self.shutdown_handle.store(true, Ordering::Relaxed);
                 },
             }
         }
-        Ok(())
     }
 }
 

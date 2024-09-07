@@ -1,19 +1,22 @@
+use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
+
 use ratatui::{
     crossterm::{event::{self as crossterm_event}, terminal, ExecutableCommand},
     prelude::CrosstermBackend, Terminal
 };
 
-use super::{app::App, widgets::common::Widget, event::EventHandler};
+use super::{app::App, widgets::common::Widget};
 
 const MIN_TERMINAL_WIDTH: u16 = 60;
 const MIN_TERMINAL_HEIGHT: u16 = 14;
 
 pub struct Tui {
-    handler: EventHandler,
+    shutdown_handle: Arc<AtomicBool>,
+    app: App
 }
 
 impl Tui {
-    pub fn new(handler: EventHandler) -> anyhow::Result<Self> {
+    pub fn new(shutdown_handle: Arc<AtomicBool>, app: App) -> anyhow::Result<Self> {
         setup_terminal()?;
 
         let panic_hook = std::panic::take_hook();
@@ -22,18 +25,15 @@ impl Tui {
             panic_hook(panic);
         }));
 
-        Ok(Self { handler })
+        Ok(Self { shutdown_handle, app })
     }
 
-    pub fn run(&self, mut app: App) -> anyhow::Result<tokio::task::JoinHandle<()>> {
-        let mut events = self.handler.subscribe_events();
+    pub fn run(mut self) -> anyhow::Result<tokio::task::JoinHandle<()>> {
         let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stdout()))?;
 
         Ok(tokio::spawn(async move {
-            while app.is_running() {
-                if let Ok(event) = events.try_recv() {
-                    app.handle_event(event);
-                }
+            while !self.shutdown_handle.load(Ordering::Relaxed) {
+                self.app.process_events();
 
                 terminal.draw(|frame| {
                     let area = frame.area();
@@ -43,10 +43,9 @@ impl Tui {
                             .alignment(ratatui::layout::Alignment::Center);
                         frame.render_widget(warning, area);
                     } else {
-                        app.draw(frame, area);
+                        self.app.draw(frame, area);
                     }
                 }).unwrap();
-                app.check_app_commands().expect("failed to check app commands");
             }
         }))
     }

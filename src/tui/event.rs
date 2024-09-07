@@ -21,28 +21,20 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_events(&self) -> tokio::task::JoinHandle<()> {
-        let shutdown_handle = self.shutdown_handle.clone();
-        let event_tx = self.event_sender.clone();
-
+    pub fn handle_events(self) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
-            while !shutdown_handle.load(Ordering::Relaxed) {
+            while !self.shutdown_handle.load(Ordering::Relaxed) {
                 if poll(EVENT_POLL_RATE).unwrap() {
                     if let Ok(event) = read() {
                         if let Event::Key(key_event) = event {
-                            match key_event.code {
-                                // Exit application on `Ctrl-C`
-                                KeyCode::Char('c') | KeyCode::Char('C') => {
-                                    if key_event.modifiers == KeyModifiers::CONTROL {
-                                        shutdown_handle.store(true, Ordering::Relaxed);
-                                        return;
-                                    }
-                                },
-                                _ => {}
+                            if (key_event.code == KeyCode::Char('c') || key_event.code == KeyCode::Char('C'))
+                                && key_event.modifiers == KeyModifiers::CONTROL {
+                                self.shutdown_handle.store(true, Ordering::Relaxed);
+                                return;
                             }
                         }
 
-                        if event_tx.send(event).is_err() {
+                        if self.event_sender.send(event).is_err() {
                             println!("Failed to send event to the channel");
                             break;
                         }

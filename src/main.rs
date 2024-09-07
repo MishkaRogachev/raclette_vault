@@ -7,14 +7,13 @@ mod tui;
 async fn main() -> anyhow::Result<()> {
     let shutdown_handle = Arc::new(AtomicBool::new(false));
 
-    let events = tui::event::EventHandler::new(shutdown_handle);
-    let tui = tui::Tui::new(events.clone())?;
-    let app = tui::app::App::new()?;
+    let events = tui::event::EventHandler::new(shutdown_handle.clone());
+    let app = tui::app::App::new(shutdown_handle.clone(), events.subscribe_events())?;
+    let tui = tui::Tui::new(shutdown_handle, app)?;
 
     tokio::select! {
-        _ = tui.run(app)? => {},
+        _ = tui.run()? => {},
         _ = events.handle_events() => {},
-        _ = tokio::signal::ctrl_c() => {},
     }
 
     Ok(())
