@@ -20,7 +20,7 @@ pub struct App {
 impl App {
     pub fn new(shutdown_handle: Arc<AtomicBool>, events: tokio::sync::broadcast::Receiver<Event>) -> anyhow::Result<Self> {
         let (command_tx, command_rx) = mpsc::channel();
-        let current_screen = Box::new(welcome::WelcomeScreen::new(command_tx.clone()));
+        let current_screen = Box::new(welcome::Screen::new(command_tx.clone()));
         Ok(Self { shutdown_handle, current_screen, command_rx, events })
     }
 

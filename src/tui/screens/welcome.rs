@@ -8,17 +8,19 @@ use ratatui::{
 };
 
 use crate::tui::app::AppCommand;
-use super::super::{widgets::common, logo};
+use super::super::{widgets::common, ascii};
 
+const WELCOME_WIDTH: u16 = 60;
+const LOGO_HEIGHT: u16 = 20;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
-pub struct WelcomeScreen {
+pub struct Screen {
     quit_button: common::Button,
     generate_button: common::Button,
 }
 
-impl WelcomeScreen {
+impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
         let quit_button = {
             let command_tx = command_tx.clone();
@@ -28,7 +30,7 @@ impl WelcomeScreen {
         let generate_button = {
             common::Button::new("Generate", Some('g'))
                 .on_down(move || {
-                    let generate_screeen = Box::new(super::generate::GenerateMnemonicScreen::new(command_tx.clone()));
+                    let generate_screeen = Box::new(super::generate::Screen::new(command_tx.clone()));
                     command_tx.send(AppCommand::SwitchScreen(generate_screeen)).unwrap();
                 })
         };
@@ -37,7 +39,7 @@ impl WelcomeScreen {
     }
 }
 
-impl common::Widget for WelcomeScreen {
+impl common::Widget for Screen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         [&mut self.quit_button, &mut self.generate_button]
             .iter_mut().fold(Some(event), |event, button| {
@@ -46,12 +48,12 @@ impl common::Widget for WelcomeScreen {
     }
 
     fn draw(&mut self, frame: &mut Frame, area: Rect) {
-        let horizontal_padding = (area.width.saturating_sub(logo::BIG_LOGO_WIDTH)) / 2;
+        let horizontal_padding = (area.width.saturating_sub(WELCOME_WIDTH)) / 2;
 
         let centered_area = Rect {
             x: horizontal_padding,
             y: area.y,
-            width: logo::BIG_LOGO_WIDTH,
+            width: WELCOME_WIDTH,
             height: area.height,
         };
 
@@ -59,14 +61,17 @@ impl common::Widget for WelcomeScreen {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Min(0), // Fill height
-                Constraint::Length(logo::BIG_LOGO_HEIGHT),
+                Constraint::Length(LOGO_HEIGHT),
                 Constraint::Length(WARNING_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
                 Constraint::Min(0), // Fill height
             ])
             .split(centered_area);
 
-        logo::big_logo(content_layout[1], frame);
+        let logo = Paragraph::new(ascii::BIG_LOGO)
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(Alignment::Center);
+        frame.render_widget(logo, content_layout[1]);
 
         let warning_text = Paragraph::new("Please don't use this wallet for real crypto!")
             .style(Style::default().fg(Color::Red).bold())

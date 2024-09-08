@@ -16,7 +16,7 @@ const INTRO_HEIGHT: u16 = 1;
 const SWITCH_HEIGHT: u16 = 3;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
-pub struct GenerateMnemonicScreen {
+pub struct Screen {
     seed_phrase: Arc<Mutex<SeedPhrase>>,
     reveal_flag: Arc<AtomicBool>,
 
@@ -28,7 +28,7 @@ pub struct GenerateMnemonicScreen {
     secure_button: common::Button,
 }
 
-impl GenerateMnemonicScreen {
+impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
         let seed_phrase = Arc::new(Mutex::new(SeedPhrase::generate(bip39::MnemonicType::Words12)));
         let reveal_flag = Arc::new(AtomicBool::new(false));
@@ -51,7 +51,7 @@ impl GenerateMnemonicScreen {
             let command_tx = command_tx.clone();
             common::Button::new("Back", Some('b'))
                 .on_down(move || {
-                    let welcome_screeen = Box::new(super::welcome::WelcomeScreen::new(command_tx.clone()));
+                    let welcome_screeen = Box::new(super::welcome::Screen::new(command_tx.clone()));
                     command_tx.send(AppCommand::SwitchScreen(welcome_screeen)).unwrap();
                 })
         };
@@ -77,7 +77,7 @@ impl GenerateMnemonicScreen {
             common::Button::new("Secure", Some('n'))
                 .on_down(move || {
                     let keypair = KeyPair::from_seed(seed_phrase.lock().unwrap().to_seed("")).unwrap();
-                    let secure_screeen = Box::new(super::secure::SecureKeypairScreen::new(command_tx.clone(), keypair));
+                    let secure_screeen = Box::new(super::secure::Screen::new(command_tx.clone(), keypair));
                     command_tx.send(AppCommand::SwitchScreen(secure_screeen)).unwrap();
                 })
         };
@@ -95,7 +95,7 @@ impl GenerateMnemonicScreen {
     }
 }
 
-impl common::Widget for GenerateMnemonicScreen {
+impl common::Widget for Screen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
         let mut controls: Vec<&mut dyn Widget> = vec![

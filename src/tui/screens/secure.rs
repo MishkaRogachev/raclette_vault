@@ -7,29 +7,30 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::core::key_pair::KeyPair;
+use crate::{core::key_pair::KeyPair, tui::ascii};
 use crate::tui::app::AppCommand;
 
 use super::super::widgets::common;
 
 const SECURE_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
+const KEYS_HEIGHT: u16 = 20;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
-pub struct SecureKeypairScreen {
+pub struct Screen {
     keypair: KeyPair,
     back_button: common::Button,
     save_button: common::Button,
 }
 
-impl SecureKeypairScreen {
+impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, keypair: KeyPair) -> Self {
         let back_button = {
             let command_tx = command_tx.clone();
             common::Button::new("Back", Some('b'))
                 .on_down(move || {
-                    let welcome_screeen = Box::new(super::welcome::WelcomeScreen::new(command_tx.clone()));
-                    command_tx.send(AppCommand::SwitchScreen(welcome_screeen)).unwrap();
+                    let generate_screeen = Box::new(super::generate::Screen::new(command_tx.clone()));
+                    command_tx.send(AppCommand::SwitchScreen(generate_screeen)).unwrap();
                 })
         };
 
@@ -46,7 +47,7 @@ impl SecureKeypairScreen {
     }
 }
 
-impl common::Widget for SecureKeypairScreen {
+impl common::Widget for Screen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         vec![&mut self.back_button, &mut self.save_button]
             .iter_mut().fold(Some(event), |event, button| {
@@ -69,6 +70,7 @@ impl common::Widget for SecureKeypairScreen {
             .constraints([
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
+                Constraint::Length(KEYS_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
                 Constraint::Min(0), // Fill height
             ])
@@ -80,13 +82,18 @@ impl common::Widget for SecureKeypairScreen {
             .alignment(Alignment::Center);
         frame.render_widget(intro_text, content_layout[1]);
 
+        let logo = Paragraph::new(ascii::KEY_PAIR)
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(Alignment::Center);
+        frame.render_widget(logo, content_layout[2]);
+
         let buttons_row = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Percentage(50),
             Constraint::Percentage(50),
         ])
-        .split(content_layout[2]);
+        .split(content_layout[3]);
 
         self.back_button.draw(frame, buttons_row[0]);
         self.save_button.draw(frame, buttons_row[1]);
