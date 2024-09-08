@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::core::cipher;
+    use super::super::cipher;
 
     #[test]
     fn test_hash_password() {

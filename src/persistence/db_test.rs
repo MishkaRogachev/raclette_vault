@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::core::persistence::Persistence;
+    use super::super::db::Db;
     use serde::{Serialize, Deserialize};
 
     #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -9,7 +9,7 @@ mod tests {
         field2: u32,
     }
 
-    fn create_test_db() -> anyhow::Result<Persistence> {
+    fn create_test_db() -> anyhow::Result<Db> {
         let db_name = format!("test_raclette_db_{}", uuid::Uuid::new_v4().to_string());
         let mut path = std::env::temp_dir();
         path.push(db_name);
@@ -17,7 +17,7 @@ mod tests {
         let config = sled::Config::new().temporary(true).path(path);
         let db = config.open()?;
 
-        Persistence::start(db, "12345678")
+        Db::start(db, "12345678")
     }
 
     #[test]

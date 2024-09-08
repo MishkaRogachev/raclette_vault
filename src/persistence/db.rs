@@ -4,12 +4,12 @@ use anyhow::Result;
 
 use super::cipher::Cipher;
 
-pub struct Persistence {
+pub struct Db {
     db: sled::Db,
     cipher: Cipher,
 }
 
-impl Persistence {
+impl Db {
     pub fn start(db: sled::Db, password: &str) -> Result<Self> {
         let cipher = Cipher::new_from_password(password);
 
