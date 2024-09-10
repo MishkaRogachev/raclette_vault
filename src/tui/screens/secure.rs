@@ -7,10 +7,10 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::{core::key_pair::KeyPair, tui::ascii};
+use crate::core::key_pair::KeyPair;
 use crate::tui::app::AppCommand;
 
-use super::super::widgets::common;
+use crate::tui::widgets::{buttons, ascii, common};
 
 const SECURE_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
@@ -19,15 +19,15 @@ const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 pub struct Screen {
     keypair: KeyPair,
-    back_button: common::Button,
-    save_button: common::Button,
+    back_button: buttons::Button,
+    save_button: buttons::Button,
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, keypair: KeyPair) -> Self {
         let back_button = {
             let command_tx = command_tx.clone();
-            common::Button::new("Back", Some('b'))
+            buttons::Button::new("Back", Some('b'))
                 .on_down(move || {
                     let create_screeen = Box::new(super::create::Screen::new(command_tx.clone()));
                     command_tx.send(AppCommand::SwitchScreen(create_screeen)).unwrap();
@@ -36,7 +36,7 @@ impl Screen {
 
         let save_button = {
             //let command_tx = command_tx.clone();
-            common::Button::new("Save & Finish", Some('s'))
+            buttons::Button::new("Save & Finish", Some('s'))
                 .on_down(move || {
                     // let home_screeen = Box::new(super::welcome::HomeScreen::new(command_tx.clone(), keypair.clone()));
                     // command_tx.send(AppCommand::SwitchScreen(home_screeen)).unwrap();

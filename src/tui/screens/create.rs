@@ -9,23 +9,25 @@ use ratatui::{
 use crate::core::{key_pair::KeyPair, seed_phrase::SeedPhrase};
 use crate::tui::widgets::{common::Widget, mnemonic::MNEMONIC_HEIGHT};
 use crate::tui::app::AppCommand;
-use super::super::widgets::{common, mnemonic};
+use crate::tui::widgets::{buttons, mnemonic, common};
 
 const GENERATE_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 2;
 const SWITCH_HEIGHT: u16 = 3;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
+const INTRO_TEXT: &str = "Your master account will be based on the mnemonic seed phrase. \nYou may access it later in the app. Handle it with care!";
+
 pub struct Screen {
     seed_phrase: Arc<Mutex<SeedPhrase>>,
     reveal_flag: Arc<AtomicBool>,
 
-    word_cnt_switch: common::Switch,
+    word_cnt_switch: buttons::SwitchButton,
     reveal_words: mnemonic::RevealWords,
-    back_button: common::Button,
-    reveal_button: common::Button,
-    hide_button: common::Button,
-    secure_button: common::Button,
+    back_button: buttons::Button,
+    reveal_button: buttons::Button,
+    hide_button: buttons::Button,
+    secure_button: buttons::Button,
 }
 
 impl Screen {
@@ -36,7 +38,7 @@ impl Screen {
 
         let word_cnt_switch = {
             let seed_phrase = seed_phrase.clone();
-            common::Switch::new("12 words", "24 words", Some('w'))
+            buttons::SwitchButton::new("12 words", "24 words", Some('w'))
             .on_toggle(move |is_on| {
                 seed_phrase.lock().unwrap().switch_mnemonic_type(
                 if is_on {
@@ -49,7 +51,7 @@ impl Screen {
 
         let back_button = {
             let command_tx = command_tx.clone();
-            common::Button::new("Back", Some('b'))
+            buttons::Button::new("Back", Some('b'))
                 .on_down(move || {
                     let welcome_screeen = Box::new(super::welcome::Screen::new(command_tx.clone()));
                     command_tx.send(AppCommand::SwitchScreen(welcome_screeen)).unwrap();
@@ -57,7 +59,7 @@ impl Screen {
         };
         let reveal_button = {
             let reveal_flag = reveal_flag.clone();
-            common::Button::new("Reveal", Some('r'))
+            buttons::Button::new("Reveal", Some('r'))
                 .on_down(move || {
                     reveal_flag.store(true, std::sync::atomic::Ordering::Relaxed);
                 })
@@ -65,7 +67,7 @@ impl Screen {
         };
         let hide_button = {
             let reveal_flag = reveal_flag.clone();
-            common::Button::new("Hide", Some('h'))
+            buttons::Button::new("Hide", Some('h'))
                 .on_down(move || {
                     reveal_flag.store(false, std::sync::atomic::Ordering::Relaxed);
                 })
@@ -74,7 +76,7 @@ impl Screen {
 
         let secure_button = {
             let seed_phrase = seed_phrase.clone();
-            common::Button::new("Secure", Some('n'))
+            buttons::Button::new("Secure", Some('n'))
                 .on_down(move || {
                     let keypair = KeyPair::from_seed(seed_phrase.lock().unwrap().to_seed("")).unwrap();
                     let secure_screeen = Box::new(super::secure::Screen::new(command_tx.clone(), keypair));
@@ -133,8 +135,7 @@ impl common::Widget for Screen {
             ])
             .split(centered_area);
 
-        let intro_text = Paragraph::new(
-            "Your master account will be based on the mnemonic seed phrase. \nYou may access it later in the app. Handle with care!")
+        let intro_text = Paragraph::new(INTRO_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
         frame.render_widget(intro_text, content_layout[1]);

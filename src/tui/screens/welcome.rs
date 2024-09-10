@@ -8,7 +8,7 @@ use ratatui::{
 };
 
 use crate::tui::app::AppCommand;
-use super::super::{widgets::common, ascii};
+use crate::tui::widgets::{buttons, ascii, common};
 
 const WELCOME_WIDTH: u16 = 60;
 const LOGO_HEIGHT: u16 = 20;
@@ -16,19 +16,19 @@ const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 pub struct Screen {
-    quit_button: common::Button,
-    create_button: common::Button,
+    quit_button: buttons::Button,
+    create_button: buttons::Button,
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
         let quit_button = {
             let command_tx = command_tx.clone();
-            common::Button::new("Quit", Some('q'))
+            buttons::Button::new("Quit", Some('q'))
                 .on_down(move || { command_tx.send(AppCommand::Quit).unwrap(); })
         };
         let create_button = {
-            common::Button::new("Create Master Account", Some('c'))
+            buttons::Button::new("Create Master Account", Some('c'))
                 .on_down(move || {
                     let create_screeen = Box::new(super::create::Screen::new(command_tx.clone()));
                     command_tx.send(AppCommand::SwitchScreen(create_screeen)).unwrap();
