@@ -17,7 +17,7 @@ mod tests {
         let config = sled::Config::new().temporary(true).path(path);
         let db = config.open()?;
 
-        Db::start(db, "12345678")
+        Db::open(db, "12345678")
     }
 
     #[test]

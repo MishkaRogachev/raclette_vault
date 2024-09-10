@@ -10,7 +10,7 @@ pub struct Db {
 }
 
 impl Db {
-    pub fn start(db: sled::Db, password: &str) -> Result<Self> {
+    pub fn open(db: sled::Db, password: &str) -> Result<Self> {
         let cipher = Cipher::new_from_password(password);
 
         Ok(Self { db, cipher })
