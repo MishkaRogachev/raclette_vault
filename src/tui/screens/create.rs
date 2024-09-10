@@ -19,13 +19,11 @@ const INTRO_TEXT: &str = "Your master account will be based on the mnemonic seed
 
 pub struct Screen {
     seed_phrase: Arc<Mutex<SeedPhrase>>,
-    reveal_flag: Arc<AtomicBool>,
 
     word_cnt_switch: buttons::SwitchButton,
     reveal_words: mnemonic::RevealWords,
     back_button: buttons::Button,
-    reveal_button: buttons::Button,
-    hide_button: buttons::Button,
+    reveal_button: buttons::SwapButton,
     secure_button: buttons::Button,
 }
 
@@ -54,21 +52,8 @@ impl Screen {
         };
         let reveal_button = {
             let reveal_flag = reveal_flag.clone();
-            buttons::Button::new("Reveal", Some('r'))
-                .on_down(move || {
-                    reveal_flag.store(true, std::sync::atomic::Ordering::Relaxed);
-                })
-                .warning()
+            buttons::SwapButton::new(reveal_flag, "Reveal", Some('r'), "Hide", Some('h'))
         };
-        let hide_button = {
-            let reveal_flag = reveal_flag.clone();
-            buttons::Button::new("Hide", Some('h'))
-                .on_down(move || {
-                    reveal_flag.store(false, std::sync::atomic::Ordering::Relaxed);
-                })
-                .primary()
-        };
-
         let secure_button = {
             let seed_phrase = seed_phrase.clone();
             buttons::Button::new("Secure", Some('n'))
@@ -81,12 +66,10 @@ impl Screen {
 
         Self {
             seed_phrase,
-            reveal_flag,
             word_cnt_switch,
             reveal_words,
             back_button,
             reveal_button,
-            hide_button,
             secure_button
         }
     }
@@ -94,11 +77,10 @@ impl Screen {
 
 impl common::Widget for Screen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
-        let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
         let mut controls: Vec<&mut dyn common::Widget> = vec![
             &mut self.word_cnt_switch,
             &mut self.back_button,
-            if revealed { &mut self.hide_button } else { &mut self.reveal_button },
+            &mut self.reveal_button,
             &mut self.secure_button
         ];
         controls.iter_mut().fold(Some(event), |event, button| {
@@ -148,11 +130,7 @@ impl common::Widget for Screen {
         .split(content_layout[4]);
 
         self.back_button.draw(frame, buttons_row[0]);
-
-        let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
-        let btn = if revealed { &mut self.hide_button } else { &mut self.reveal_button };
-        btn.draw(frame, buttons_row[1]);
-
+        self.reveal_button.draw(frame, buttons_row[1]);
         self.secure_button.draw(frame, buttons_row[2]);
     }
 }

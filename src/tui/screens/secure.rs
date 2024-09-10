@@ -1,5 +1,5 @@
 
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{atomic::AtomicBool, mpsc, Arc, Mutex};
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -26,23 +26,26 @@ const TIP_TEXT: &str = "Tip: Use [tab] to switch focus and [esc] to reset select
 
 pub struct Screen {
     keypair: KeyPair,
+
     first_input: inputs::Input,
     second_input: inputs::Input,
     back_button: buttons::Button,
+    reveal_button: buttons::SwapButton,
     save_button: buttons::Button,
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, keypair: KeyPair) -> Self {
+        let reveal_flag = Arc::new(AtomicBool::new(false));
         let first_password = Arc::new(Mutex::new(String::new()));
         let second_password = Arc::new(Mutex::new(String::new()));
 
         let first_input = inputs::Input::new("Enter password")
             .on_enter(move |value| { *first_password.lock().unwrap() = value;})
-            .masked("*");
+            .mask(reveal_flag.clone());
         let second_input = inputs::Input::new("Confirm password")
             .on_enter(move |value| { *second_password.lock().unwrap() = value;})
-            .masked("*");
+            .mask(reveal_flag.clone());
 
         let back_button = {
             let command_tx = command_tx.clone();
@@ -52,7 +55,8 @@ impl Screen {
                     command_tx.send(AppCommand::SwitchScreen(create_screeen)).unwrap();
                 })
         };
-
+        let reveal_button = buttons::SwapButton::new(
+            reveal_flag, "Reveal", Some('r'), "Hide", Some('h'));
         let save_button = {
             //let command_tx = command_tx.clone();
             buttons::Button::new("Save & Finish", Some('s'))
@@ -62,7 +66,7 @@ impl Screen {
                 })
         };
 
-        Self { keypair, first_input, second_input, back_button, save_button }
+        Self { keypair, first_input, second_input, back_button, reveal_button, save_button }
     }
 }
 
@@ -71,8 +75,12 @@ impl common::Widget for Screen {
         let event = focus::handle_event(&mut [&mut self.first_input, &mut self.second_input], event);
         match event {
             Some(event) => {
-                vec![&mut self.back_button, &mut self.save_button]
-                    .iter_mut().fold(Some(event), |event, button| {
+                let mut controls: Vec<&mut dyn common::Widget> = vec![
+                    &mut self.back_button,
+                    &mut self.reveal_button,
+                    &mut self.save_button
+                ];
+                controls.iter_mut().fold(Some(event), |event, button| {
                     event.and_then(|e| button.handle_event(e))
                 })
             },
@@ -132,12 +140,14 @@ impl common::Widget for Screen {
         let buttons_row = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+            Constraint::Percentage(40),
         ])
         .split(content_layout[7]);
 
         self.back_button.draw(frame, buttons_row[0]);
-        self.save_button.draw(frame, buttons_row[1]);
+        self.reveal_button.draw(frame, buttons_row[1]);
+        self.save_button.draw(frame, buttons_row[2]);
     }
 }

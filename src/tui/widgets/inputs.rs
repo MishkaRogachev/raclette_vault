@@ -1,3 +1,4 @@
+use std::sync::{atomic::AtomicBool, Arc};
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
     layout::Rect,
@@ -16,7 +17,7 @@ pub struct Input {
     pub placeholder: String,
     pub color: Color,
     pub focused: bool,
-    pub mask: Option<String>,
+    pub mask_flag: Option<Arc<AtomicBool>>,
     pub validator: Option<Regex>,
     pub control: Control,
     pub on_enter: Option<Box<dyn Fn(String) + Send>>,
@@ -30,15 +31,15 @@ impl Input {
             placeholder: placeholder.to_string(),
             color: Color::Yellow,
             focused: false,
-            mask: None,
+            mask_flag: None,
             validator: None,
             control: Control::new(),
             on_enter: None,
         }
     }
 
-    pub fn masked(mut self, mask: &str) -> Self {
-        self.mask = Some(mask.to_string());
+    pub fn mask(mut self, mask: Arc<AtomicBool>) -> Self {
+        self.mask_flag = Some(mask);
         self
     }
 
@@ -108,8 +109,8 @@ impl Widget for Input {
         let display_value = if self.value.is_empty() {
             Span::styled(&self.placeholder, Style::default().fg(Color::DarkGray))
         } else {
-            if let Some(mask) = &self.mask {
-                Span::styled(mask.repeat(self.value.len()), style)
+            if self.mask_flag.is_some() && !self.mask_flag.as_ref().unwrap().load(std::sync::atomic::Ordering::Relaxed) {
+                Span::styled("*".repeat(self.value.len()), style)
             } else {
                 Span::styled(&self.value, style)
             }

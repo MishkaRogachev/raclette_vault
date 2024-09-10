@@ -1,3 +1,4 @@
+use std::sync::{atomic::AtomicBool, Arc};
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     layout::{Constraint, Direction, Layout, Rect},
@@ -25,6 +26,12 @@ pub struct SwitchButton {
     pub is_on: bool,
     pub on_toggle: Option<Box<dyn Fn(bool) + Send>>,
     pub control: Control,
+}
+
+pub struct SwapButton {
+    pub first: Button,
+    pub second: Button,
+    pub state: Arc<AtomicBool>,
 }
 
 impl Button {
@@ -260,5 +267,67 @@ pub fn render_label_with_hotkey(label: &str, hotkey: Option<char>, style: Style)
         Line::from(spans)
     } else {
         Line::from(Span::styled(label.to_string(), style))
+    }
+}
+
+impl SwapButton {
+    pub fn new(
+        state: Arc<AtomicBool>,
+        first_label: &str,
+        first_hotkey: Option<char>,
+        second_label: &str,
+        second_hotkey: Option<char>
+    ) -> Self {
+        let first = {
+            let state = state.clone();
+            Button::new(first_label, first_hotkey)
+                .on_down(move || {
+                    state.store(true, std::sync::atomic::Ordering::Relaxed);
+                })
+                .warning()
+        };
+        let second = {
+            let state = state.clone();
+            Button::new(second_label, second_hotkey)
+                .on_down(move || {
+                    state.store(false, std::sync::atomic::Ordering::Relaxed);
+                })
+                .primary()
+        };
+        Self { first, second, state }
+    }
+
+    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> Option<Event> {
+        if self.state.load(std::sync::atomic::Ordering::Relaxed) {
+            self.second.handle_event(Event::Mouse(mouse_event))
+        } else {
+            self.first.handle_event(Event::Mouse(mouse_event))
+        }
+    }
+
+    fn handle_key_event(&mut self, key_event: KeyEvent) -> Option<Event> {
+        if self.state.load(std::sync::atomic::Ordering::Relaxed) {
+            self.second.handle_event(Event::Key(key_event))
+        } else {
+            self.first.handle_event(Event::Key(key_event))
+        }
+    }
+}
+
+impl Widget for SwapButton {
+    fn handle_event(&mut self, event: Event) -> Option<Event> {
+        match event {
+            Event::Mouse(mouse_event) => self.handle_mouse_event(mouse_event),
+            Event::Key(key_event) => self.handle_key_event(key_event),
+            _ => Some(event),
+        }
+    }
+
+    fn draw(&mut self, frame: &mut Frame, area: Rect) {
+        if self.state.load(std::sync::atomic::Ordering::Relaxed) {
+            self.second.draw(frame, area);
+        } else {
+            self.first.draw(frame, area);
+        }
     }
 }
