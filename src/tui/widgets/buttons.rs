@@ -9,7 +9,6 @@ use ratatui::{
 
 use super::common::{Control, Widget};
 
-
 pub struct Button {
     pub label: String,
     pub hotkey: Option<char>,

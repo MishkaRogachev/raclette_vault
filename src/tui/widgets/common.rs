@@ -1,7 +1,5 @@
 
-use ratatui::{
-    crossterm::event::{Event, MouseEvent}, layout::Rect, Frame
-};
+use ratatui::{ crossterm::event::{Event, MouseEvent}, layout::Rect, Frame };
 
 pub trait Widget {
     fn handle_event(&mut self, event: Event) -> Option<Event>;

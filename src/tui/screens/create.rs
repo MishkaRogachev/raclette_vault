@@ -7,7 +7,6 @@ use ratatui::{
 };
 
 use crate::core::{key_pair::KeyPair, seed_phrase::SeedPhrase};
-use crate::tui::widgets::{common::Widget, mnemonic::MNEMONIC_HEIGHT};
 use crate::tui::app::AppCommand;
 use crate::tui::widgets::{buttons, mnemonic, common};
 
@@ -41,11 +40,7 @@ impl Screen {
             buttons::SwitchButton::new("12 words", "24 words", Some('w'))
             .on_toggle(move |is_on| {
                 seed_phrase.lock().unwrap().switch_mnemonic_type(
-                if is_on {
-                    bip39::MnemonicType::Words24
-                } else {
-                    bip39::MnemonicType::Words12
-                });
+                if is_on { bip39::MnemonicType::Words24 } else { bip39::MnemonicType::Words12 });
             })
         };
 
@@ -100,7 +95,7 @@ impl Screen {
 impl common::Widget for Screen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
         let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
-        let mut controls: Vec<&mut dyn Widget> = vec![
+        let mut controls: Vec<&mut dyn common::Widget> = vec![
             &mut self.word_cnt_switch,
             &mut self.back_button,
             if revealed { &mut self.hide_button } else { &mut self.reveal_button },
@@ -129,7 +124,7 @@ impl common::Widget for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Length(SWITCH_HEIGHT),
-                Constraint::Length(MNEMONIC_HEIGHT),
+                Constraint::Length(mnemonic::MNEMONIC_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
                 Constraint::Min(0), // Fill height
             ])
