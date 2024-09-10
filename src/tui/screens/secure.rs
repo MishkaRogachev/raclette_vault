@@ -29,17 +29,17 @@ impl Screen {
             let command_tx = command_tx.clone();
             common::Button::new("Back", Some('b'))
                 .on_down(move || {
-                    let generate_screeen = Box::new(super::generate::Screen::new(command_tx.clone()));
-                    command_tx.send(AppCommand::SwitchScreen(generate_screeen)).unwrap();
+                    let create_screeen = Box::new(super::create::Screen::new(command_tx.clone()));
+                    command_tx.send(AppCommand::SwitchScreen(create_screeen)).unwrap();
                 })
         };
 
         let save_button = {
             //let command_tx = command_tx.clone();
-            common::Button::new("Save", Some('b'))
+            common::Button::new("Save & Finish", Some('s'))
                 .on_down(move || {
-                    // let welcome_screeen = Box::new(super::welcome::WelcomeScreen::new(command_tx.clone()));
-                    // command_tx.send(AppCommand::SwitchScreen(welcome_screeen)).unwrap();
+                    // let home_screeen = Box::new(super::welcome::HomeScreen::new(command_tx.clone(), keypair.clone()));
+                    // command_tx.send(AppCommand::SwitchScreen(home_screeen)).unwrap();
                 })
         };
 

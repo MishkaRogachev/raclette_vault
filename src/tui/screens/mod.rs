@@ -1,3 +1,3 @@
 pub mod welcome;
-mod generate;
+mod create;
 mod secure;

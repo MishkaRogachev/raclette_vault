@@ -17,7 +17,7 @@ const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 pub struct Screen {
     quit_button: common::Button,
-    generate_button: common::Button,
+    create_button: common::Button,
 }
 
 impl Screen {
@@ -27,21 +27,21 @@ impl Screen {
             common::Button::new("Quit", Some('q'))
                 .on_down(move || { command_tx.send(AppCommand::Quit).unwrap(); })
         };
-        let generate_button = {
-            common::Button::new("Generate", Some('g'))
+        let create_button = {
+            common::Button::new("Create Master Account", Some('c'))
                 .on_down(move || {
-                    let generate_screeen = Box::new(super::generate::Screen::new(command_tx.clone()));
-                    command_tx.send(AppCommand::SwitchScreen(generate_screeen)).unwrap();
+                    let create_screeen = Box::new(super::create::Screen::new(command_tx.clone()));
+                    command_tx.send(AppCommand::SwitchScreen(create_screeen)).unwrap();
                 })
         };
 
-        Self { quit_button, generate_button }
+        Self { quit_button, create_button }
     }
 }
 
 impl common::Widget for Screen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
-        [&mut self.quit_button, &mut self.generate_button]
+        [&mut self.quit_button, &mut self.create_button]
             .iter_mut().fold(Some(event), |event, button| {
             event.and_then(|e| button.handle_event(e))
         })
@@ -87,6 +87,6 @@ impl common::Widget for Screen {
             .split(content_layout[3]);
 
         self.quit_button.draw(frame, buttons_row[0]);
-        self.generate_button.draw(frame, buttons_row[1]);
+        self.create_button.draw(frame, buttons_row[1]);
     }
 }

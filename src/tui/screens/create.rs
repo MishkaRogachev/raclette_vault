@@ -12,7 +12,7 @@ use crate::tui::app::AppCommand;
 use super::super::widgets::{common, mnemonic};
 
 const GENERATE_WIDTH: u16 = 80;
-const INTRO_HEIGHT: u16 = 1;
+const INTRO_HEIGHT: u16 = 2;
 const SWITCH_HEIGHT: u16 = 3;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
@@ -134,7 +134,7 @@ impl common::Widget for Screen {
             .split(centered_area);
 
         let intro_text = Paragraph::new(
-            "The seed phrase is a backup of your keypair. Handle with care.")
+            "Your master account will be based on the mnemonic seed phrase. \nYou may access it later in the app. Handle with care!")
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
         frame.render_widget(intro_text, content_layout[1]);
