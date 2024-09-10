@@ -13,10 +13,11 @@ use super::common::{Control, Widget};
 pub struct Button {
     pub label: String,
     pub hotkey: Option<char>,
+    pub disabled: bool,
     pub color: Color,
-    pub on_up: Option<Box<dyn Fn() + Send>>,
-    pub on_down: Option<Box<dyn Fn() + Send>>,
-    pub control: Control,
+    on_up: Option<Box<dyn Fn() + Send>>,
+    on_down: Option<Box<dyn Fn() + Send>>,
+    control: Control,
 }
 
 pub struct SwitchButton {
@@ -24,8 +25,8 @@ pub struct SwitchButton {
     pub on_label: String,
     pub hotkey: Option<char>,
     pub is_on: bool,
-    pub on_toggle: Option<Box<dyn Fn(bool) + Send>>,
-    pub control: Control,
+    on_toggle: Option<Box<dyn Fn(bool) + Send>>,
+    control: Control,
 }
 
 pub struct SwapButton {
@@ -39,6 +40,7 @@ impl Button {
         Button {
             label: label.to_string(),
             hotkey,
+            disabled: false,
             color: Color::Yellow,
             on_up: None,
             on_down: None,
@@ -104,6 +106,10 @@ impl Button {
 
 impl Widget for Button {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
+        if self.disabled {
+            return Some(event);
+        }
+
         match event {
             Event::Mouse(mouse_event) => self.handle_mouse_event(mouse_event),
             Event::Key(key_event) => self.handle_key_event(key_event),
@@ -111,19 +117,17 @@ impl Widget for Button {
         }
     }
 
-    fn draw(&mut self, frame: &mut Frame, area: Rect) {
+    fn process(&mut self, frame: &mut Frame, area: Rect) {
         self.control.area = Some(area); // Store the button's area for later use
 
-        let style = Style::default().fg(self.color).add_modifier(Modifier::BOLD);
+        let color = if self.disabled { Color::DarkGray } else { self.color };
+        let style = Style::default().fg(color).add_modifier(Modifier::BOLD);
         let block = Block::default().borders(Borders::ALL).border_style(style);
 
-        let (block, style) = if self.control.is_hovered {
-            (
-                block,
-                style.bg(self.color).fg(Color::Black),
-            )
+        let (block, style) = if !self.disabled && self.control.is_hovered {
+            ( block, style.bg(color).fg(Color::Black))
         } else {
-            (block, style,)
+            (block, style)
         };
 
         let label_line =  render_label_with_hotkey(&self.label, self.hotkey, style);
@@ -190,7 +194,7 @@ impl Widget for SwitchButton {
         }
     }
 
-    fn draw(&mut self, frame: &mut Frame, area: Rect) {
+    fn process(&mut self, frame: &mut Frame, area: Rect) {
         self.control.area = Some(area);
 
         let active_style = Style::default().fg(Color::Black).bg(Color::Yellow).add_modifier(Modifier::BOLD);
@@ -323,11 +327,11 @@ impl Widget for SwapButton {
         }
     }
 
-    fn draw(&mut self, frame: &mut Frame, area: Rect) {
+    fn process(&mut self, frame: &mut Frame, area: Rect) {
         if self.state.load(std::sync::atomic::Ordering::Relaxed) {
-            self.second.draw(frame, area);
+            self.second.process(frame, area);
         } else {
-            self.first.draw(frame, area);
+            self.first.process(frame, area);
         }
     }
 }

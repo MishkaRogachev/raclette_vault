@@ -3,7 +3,7 @@ use ratatui::{ crossterm::event::{Event, MouseEvent}, layout::{Position, Rect}, 
 
 pub trait Widget {
     fn handle_event(&mut self, event: Event) -> Option<Event>;
-    fn draw(&mut self, frame: &mut Frame, area: ratatui::layout::Rect);
+    fn process(&mut self, frame: &mut Frame, area: ratatui::layout::Rect);
 }
 
 pub struct Control {

@@ -47,7 +47,7 @@ impl common::Widget for Screen {
         })
     }
 
-    fn draw(&mut self, frame: &mut Frame, area: Rect) {
+    fn process(&mut self, frame: &mut Frame, area: Rect) {
         let horizontal_padding = (area.width.saturating_sub(WELCOME_WIDTH)) / 2;
 
         let centered_area = Rect {
@@ -86,7 +86,7 @@ impl common::Widget for Screen {
             ])
             .split(content_layout[3]);
 
-        self.quit_button.draw(frame, buttons_row[0]);
-        self.create_button.draw(frame, buttons_row[1]);
+        self.quit_button.process(frame, buttons_row[0]);
+        self.create_button.process(frame, buttons_row[1]);
     }
 }

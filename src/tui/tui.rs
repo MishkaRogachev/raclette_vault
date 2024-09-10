@@ -43,7 +43,7 @@ impl Tui {
                             .alignment(ratatui::layout::Alignment::Center);
                         frame.render_widget(warning, area);
                     } else {
-                        self.app.draw(frame, area);
+                        self.app.process(frame, area);
                     }
                 }).unwrap();
             }

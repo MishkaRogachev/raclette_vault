@@ -1,5 +1,5 @@
 
-use std::sync::{atomic::AtomicBool, mpsc, Arc, Mutex};
+use std::sync::{atomic::AtomicBool, mpsc, Arc};
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -37,14 +37,10 @@ pub struct Screen {
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, keypair: KeyPair) -> Self {
         let reveal_flag = Arc::new(AtomicBool::new(false));
-        let first_password = Arc::new(Mutex::new(String::new()));
-        let second_password = Arc::new(Mutex::new(String::new()));
 
         let first_input = inputs::Input::new("Enter password")
-            .on_enter(move |value| { *first_password.lock().unwrap() = value;})
             .mask(reveal_flag.clone());
         let second_input = inputs::Input::new("Confirm password")
-            .on_enter(move |value| { *second_password.lock().unwrap() = value;})
             .mask(reveal_flag.clone());
 
         let back_button = {
@@ -88,7 +84,26 @@ impl common::Widget for Screen {
         }
     }
 
-    fn draw(&mut self, frame: &mut Frame, area: Rect) {
+    fn process(&mut self, frame: &mut Frame, area: Rect) {
+        let first_password = &self.first_input.value;
+        let second_password = &self.second_input.value;
+
+        if first_password.is_empty() {
+            self.first_input.color = Color::Red;
+            self.second_input.color = Color::Red;
+            self.save_button.disabled = false;
+        } else {
+            self.first_input.color = Color::Yellow;
+
+            if *first_password != *second_password {
+                self.second_input.color = Color::Red;
+                self.save_button.disabled = true;
+            } else {
+                self.second_input.color = Color::Yellow;
+                self.save_button.disabled = false;
+            }
+        }
+
         let horizontal_padding = (area.width.saturating_sub(SECURE_WIDTH)) / 2;
 
         let centered_area = Rect {
@@ -123,14 +138,14 @@ impl common::Widget for Screen {
             .alignment(Alignment::Center);
         frame.render_widget(first_label, content_layout[2]);
 
-        self.first_input.draw(frame, content_layout[3]);
+        self.first_input.process(frame, content_layout[3]);
 
         let second_label = Paragraph::new(SECOND_LABEL_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
         frame.render_widget(second_label, content_layout[4]);
 
-        self.second_input.draw(frame, content_layout[5]);
+        self.second_input.process(frame, content_layout[5]);
 
         let tip_text = Paragraph::new(TIP_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
@@ -146,8 +161,8 @@ impl common::Widget for Screen {
         ])
         .split(content_layout[7]);
 
-        self.back_button.draw(frame, buttons_row[0]);
-        self.reveal_button.draw(frame, buttons_row[1]);
-        self.save_button.draw(frame, buttons_row[2]);
+        self.back_button.process(frame, buttons_row[0]);
+        self.reveal_button.process(frame, buttons_row[1]);
+        self.save_button.process(frame, buttons_row[2]);
     }
 }

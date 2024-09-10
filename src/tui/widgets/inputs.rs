@@ -13,14 +13,14 @@ use super::{common::{Control, Widget}, focus::Focusable};
 
 pub struct Input {
     last_value: String,
-    value: String,
+    pub value: String,
     pub placeholder: String,
     pub color: Color,
     pub focused: bool,
-    pub mask_flag: Option<Arc<AtomicBool>>,
-    pub validator: Option<Regex>,
-    pub control: Control,
-    pub on_enter: Option<Box<dyn Fn(String) + Send>>,
+    mask_flag: Option<Arc<AtomicBool>>,
+    validator: Option<Regex>,
+    control: Control,
+    on_enter: Option<Box<dyn Fn(String) + Send>>,
 }
 
 impl Input {
@@ -43,7 +43,7 @@ impl Input {
         self
     }
 
-    pub fn value(mut self, value: &str) -> Self {
+    pub fn set_value(mut self, value: &str) -> Self {
         self.last_value = value.to_string();
         self.value = value.to_string();
         self
@@ -96,7 +96,7 @@ impl Widget for Input {
         }
     }
 
-    fn draw(&mut self, frame: &mut Frame, area: Rect) {
+    fn process(&mut self, frame: &mut Frame, area: Rect) {
         self.control.area = Some(area);
 
         let style = if self.focused {

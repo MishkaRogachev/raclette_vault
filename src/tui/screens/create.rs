@@ -56,7 +56,7 @@ impl Screen {
         };
         let secure_button = {
             let seed_phrase = seed_phrase.clone();
-            buttons::Button::new("Secure", Some('n'))
+            buttons::Button::new("Secure", Some('s'))
                 .on_down(move || {
                     let keypair = KeyPair::from_seed(seed_phrase.lock().unwrap().to_seed("")).unwrap();
                     let secure_screeen = Box::new(super::secure::Screen::new(command_tx.clone(), keypair));
@@ -88,7 +88,7 @@ impl common::Widget for Screen {
         })
     }
 
-    fn draw(&mut self, frame: &mut Frame, area: Rect) {
+    fn process(&mut self, frame: &mut Frame, area: Rect) {
         self.reveal_words.set_words(self.seed_phrase.lock().unwrap().to_words());
 
         let horizontal_padding = (area.width.saturating_sub(GENERATE_WIDTH)) / 2;
@@ -117,8 +117,8 @@ impl common::Widget for Screen {
             .alignment(Alignment::Center);
         frame.render_widget(intro_text, content_layout[1]);
 
-        self.word_cnt_switch.draw(frame, content_layout[2]);
-        self.reveal_words.draw(frame, content_layout[3]);
+        self.word_cnt_switch.process(frame, content_layout[2]);
+        self.reveal_words.process(frame, content_layout[3]);
 
         let buttons_row = Layout::default()
         .direction(Direction::Horizontal)
@@ -129,8 +129,8 @@ impl common::Widget for Screen {
         ])
         .split(content_layout[4]);
 
-        self.back_button.draw(frame, buttons_row[0]);
-        self.reveal_button.draw(frame, buttons_row[1]);
-        self.secure_button.draw(frame, buttons_row[2]);
+        self.back_button.process(frame, buttons_row[0]);
+        self.reveal_button.process(frame, buttons_row[1]);
+        self.secure_button.process(frame, buttons_row[2]);
     }
 }

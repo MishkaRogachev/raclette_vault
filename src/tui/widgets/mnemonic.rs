@@ -31,7 +31,7 @@ impl super::common::Widget for RevealWords {
         Some(event)
     }
 
-    fn draw(&mut self, frame: &mut Frame, area: Rect) {
+    fn process(&mut self, frame: &mut Frame, area: Rect) {
         let word_count = self.words.len();
         let column_count = if word_count <= 12 { 2 } else { 4 };
         let words_per_column = (word_count + column_count - 1) / column_count;

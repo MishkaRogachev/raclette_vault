@@ -47,7 +47,7 @@ impl super::widgets::common::Widget for App {
         self.current_screen.handle_event(event)
     }
 
-    fn draw(&mut self, frame: &mut Frame, area: Rect) {
-        self.current_screen.draw(frame, area);
+    fn process(&mut self, frame: &mut Frame, area: Rect) {
+        self.current_screen.process(frame, area);
     }
 }
