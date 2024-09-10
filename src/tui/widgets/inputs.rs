@@ -8,7 +8,7 @@ use ratatui::{
 };
 use regex::Regex;
 
-use super::common::{Control, Widget};
+use super::{common::{Control, Widget}, focus::Focusable};
 
 pub struct Input {
     last_value: String,
@@ -117,5 +117,19 @@ impl Widget for Input {
 
         let paragraph = Paragraph::new(Line::from(display_value)).block(block);
         frame.render_widget(paragraph, area);
+    }
+}
+
+impl Focusable for Input {
+    fn is_focused(&self) -> bool {
+        self.focused
+    }
+
+    fn set_focused(&mut self, focused: bool) {
+        self.focused = focused;
+    }
+
+    fn contains(&self, column: u16, row: u16) -> bool {
+        self.control.contains(column, row)
     }
 }

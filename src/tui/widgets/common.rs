@@ -1,5 +1,5 @@
 
-use ratatui::{ crossterm::event::{Event, MouseEvent}, layout::Rect, Frame };
+use ratatui::{ crossterm::event::{Event, MouseEvent}, layout::{Position, Rect}, Frame };
 
 pub trait Widget {
     fn handle_event(&mut self, event: Event) -> Option<Event>;
@@ -23,7 +23,7 @@ impl Control {
 
     pub fn contains(&self, x: u16, y: u16) -> bool {
         if let Some(area) = self.area {
-            return area.x <= x && x < area.x + area.width && area.y <= y && y < area.y + area.height;
+            return area.contains(Position { x, y });
         }
         false
     }
