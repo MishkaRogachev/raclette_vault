@@ -1,6 +1,6 @@
 use bip39::Seed;
-use secp256k1::{Secp256k1, rand::{rngs::{JitterRng, StdRng}, SeedableRng, RngCore}};
-use rand::rngs::OsRng;
+use secp256k1::Secp256k1;
+use sha3::digest::typenum::array;
 use zeroize::Zeroizing;
 
 pub const SECRET_KEY_LEN: usize = secp256k1::constants::SECRET_KEY_SIZE;
@@ -92,12 +92,6 @@ impl<'de> serde::Deserialize<'de> for KeyPair {
             public_key: Zeroizing::new(public_key.try_into().expect(ERR_PUBLIC_KEY_CONVERT)),
         })
     }
-}
-
-fn get_nstime() -> u64 {
-    let dur = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_else(|_| { std::time::Duration::from_secs(0) });
-    dur.as_secs() << 30 | dur.subsec_nanos() as u64
 }
 
 fn err_secret_key_len() -> String {

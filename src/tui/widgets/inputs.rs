@@ -1,4 +1,5 @@
-use std::sync::{atomic::AtomicBool, Arc};
+use std::{clone, sync::{atomic::AtomicBool, Arc}};
+use zeroize::Zeroizing;
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},
     layout::Rect,
@@ -7,32 +8,30 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame
 };
-use regex::Regex;
+
 
 use super::{common::{Control, Widget}, focus::Focusable};
 
 pub struct Input {
-    last_value: String,
-    pub value: String,
+    last_value: Zeroizing<String>,
+    pub value: Zeroizing<String>,
     pub placeholder: String,
     pub color: Color,
     pub focused: bool,
     mask_flag: Option<Arc<AtomicBool>>,
-    validator: Option<Regex>,
     control: Control,
-    on_enter: Option<Box<dyn Fn(String) + Send>>,
+    on_enter: Option<Box<dyn Fn(&str) + Send>>,
 }
 
 impl Input {
     pub fn new(placeholder: &str) -> Self {
         Self {
-            last_value: String::new(),
-            value: String::new(),
+            last_value: Zeroizing::new(String::new()),
+            value: Zeroizing::new(String::new()),
             placeholder: placeholder.to_string(),
             color: Color::Yellow,
             focused: false,
             mask_flag: None,
-            validator: None,
             control: Control::new(),
             on_enter: None,
         }
@@ -44,12 +43,12 @@ impl Input {
     }
 
     pub fn set_value(mut self, value: &str) -> Self {
-        self.last_value = value.to_string();
-        self.value = value.to_string();
+        *self.last_value = value.to_string();
+        *self.value = value.to_string();
         self
     }
 
-    pub fn on_enter<F: Fn(String) + 'static + Send>(mut self, callback: F) -> Self {
+    pub fn on_enter<F: Fn(&str) + 'static + Send>(mut self, callback: F) -> Self {
         self.on_enter = Some(Box::new(callback));
         self
     }
@@ -65,14 +64,9 @@ impl Input {
                 None
             }
             KeyCode::Enter => {
-                if let Some(ref regex) = self.validator {
-                    if regex.is_match(&self.value) {
-                        if let Some(func) = &self.on_enter {
-                            func(self.value.clone());
-                        }
-                    }
-                } else if let Some(func) = &self.on_enter {
-                    func(self.value.clone());
+                if let Some(func) = &self.on_enter {
+                    let value: &str = &self.value;
+                    func(value);
                 }
                 self.last_value = self.value.clone();
                 self.focused = false;
@@ -112,7 +106,8 @@ impl Widget for Input {
             if self.mask_flag.is_some() && !self.mask_flag.as_ref().unwrap().load(std::sync::atomic::Ordering::Relaxed) {
                 Span::styled("*".repeat(self.value.len()), style)
             } else {
-                Span::styled(&self.value, style)
+                let value: &str = &self.value;
+                Span::styled(value, style)
             }
         };
 

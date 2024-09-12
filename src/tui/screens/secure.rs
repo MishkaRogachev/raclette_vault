@@ -1,5 +1,6 @@
 
-use std::sync::{atomic::AtomicBool, mpsc, Arc};
+use std::sync::{atomic::AtomicBool, mpsc, Arc, Mutex};
+use zeroize::Zeroizing;
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -7,7 +8,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::core::key_pair::KeyPair;
+use crate::{core::seed_phrase, service::access};
 use crate::tui::app::AppCommand;
 
 use crate::tui::widgets::{common, focus, buttons, inputs};
@@ -25,8 +26,6 @@ const SECOND_LABEL_TEXT: &str = "Please, confirm your password.";
 const TIP_TEXT: &str = "Tip: Use [tab] to switch focus and [esc] to reset selection.";
 
 pub struct Screen {
-    keypair: KeyPair,
-
     first_input: inputs::Input,
     second_input: inputs::Input,
     back_button: buttons::Button,
@@ -35,11 +34,18 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>, keypair: KeyPair) -> Self {
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, seed_phrase: seed_phrase::SeedPhrase) -> Self {
         let reveal_flag = Arc::new(AtomicBool::new(false));
+        let password = Arc::new(Mutex::new(Zeroizing::new(String::new())));
 
-        let first_input = inputs::Input::new("Enter password")
-            .mask(reveal_flag.clone());
+        let first_input = {
+            let password = password.clone();
+            inputs::Input::new("Enter password")
+                .mask(reveal_flag.clone())
+                .on_enter(move |value| {
+                    *password.lock().unwrap() = Zeroizing::new(value.to_string());
+                })
+        };
         let second_input = inputs::Input::new("Confirm password")
             .mask(reveal_flag.clone());
 
@@ -54,15 +60,16 @@ impl Screen {
         let reveal_button = buttons::SwapButton::new(
             reveal_flag, "Reveal", Some('r'), "Hide", Some('h'));
         let save_button = {
-            //let command_tx = command_tx.clone();
             buttons::Button::new("Save & Finish", Some('s'))
                 .on_down(move || {
-                    // let home_screeen = Box::new(super::welcome::HomeScreen::new(command_tx.clone(), keypair.clone()));
-                    // command_tx.send(AppCommand::SwitchScreen(home_screeen)).unwrap();
+                    let password = password.lock().unwrap().clone();
+                    access::create_account(&seed_phrase, &password).expect("Fatal issue with creating an account")
+                    // // let home_screeen = Box::new(super::welcome::HomeScreen::new(command_tx.clone(), keypair.clone()));
+                    // // command_tx.send(AppCommand::SwitchScreen(home_screeen)).unwrap();
                 })
         };
 
-        Self { keypair, first_input, second_input, back_button, reveal_button, save_button }
+        Self { first_input, second_input, back_button, reveal_button, save_button }
     }
 }
 

@@ -6,7 +6,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::core::{key_pair::KeyPair, seed_phrase::SeedPhrase};
+use crate::core::seed_phrase::SeedPhrase;
 use crate::tui::app::AppCommand;
 use crate::tui::widgets::{buttons, mnemonic, common};
 
@@ -58,8 +58,7 @@ impl Screen {
             let seed_phrase = seed_phrase.clone();
             buttons::Button::new("Secure", Some('s'))
                 .on_down(move || {
-                    let keypair = KeyPair::from_seed(seed_phrase.lock().unwrap().to_seed("")).unwrap();
-                    let secure_screeen = Box::new(super::secure::Screen::new(command_tx.clone(), keypair));
+                    let secure_screeen = Box::new(super::secure::Screen::new(command_tx.clone(), seed_phrase.lock().unwrap().clone()));
                     command_tx.send(AppCommand::SwitchScreen(secure_screeen)).unwrap();
                 })
         };

@@ -2,6 +2,7 @@ use std::sync::{atomic::AtomicBool, Arc};
 
 mod core;
 mod persistence;
+mod service;
 mod tui;
 
 #[tokio::main]

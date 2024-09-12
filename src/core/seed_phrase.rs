@@ -1,6 +1,6 @@
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SeedPhrase {
     pub mnemonic: Mnemonic,
 }
