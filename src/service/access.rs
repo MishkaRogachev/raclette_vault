@@ -2,7 +2,7 @@ use crate::{core::{key_pair::KeyPair, seed_phrase::SeedPhrase}, persistence};
 
 const ROOT_KEYPAIR: &[u8] = b"root_keypair";
 
-pub fn create_account(seed_phrase: &SeedPhrase, password: &str) -> anyhow::Result<()> {
+pub fn create_account(seed_phrase: &SeedPhrase, password: &str) -> anyhow::Result<(KeyPair)> {
     let path = std::env::current_dir()?;
 
     // NOTE: extra password may be used for seed_phrase -> keypair conversion
@@ -12,5 +12,5 @@ pub fn create_account(seed_phrase: &SeedPhrase, password: &str) -> anyhow::Resul
     let serialized_keypair = serde_json::to_vec(&keypair)?;
     db.insert(ROOT_KEYPAIR, &serialized_keypair)?;
 
-    Ok(())
+    Ok(keypair)
 }

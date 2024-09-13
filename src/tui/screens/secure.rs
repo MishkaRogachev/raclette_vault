@@ -63,9 +63,9 @@ impl Screen {
             buttons::Button::new("Save & Finish", Some('s'))
                 .on_down(move || {
                     let password = password.lock().unwrap().clone();
-                    access::create_account(&seed_phrase, &password).expect("Fatal issue with creating an account")
-                    // // let home_screeen = Box::new(super::welcome::HomeScreen::new(command_tx.clone(), keypair.clone()));
-                    // // command_tx.send(AppCommand::SwitchScreen(home_screeen)).unwrap();
+                    let keypair = access::create_account(&seed_phrase, &password).expect("Fatal issue with creating an account");
+                    let home_screeen = Box::new(super::home::Screen::new(command_tx.clone(), keypair.clone()));
+                    command_tx.send(AppCommand::SwitchScreen(home_screeen)).unwrap();
                 })
         };
 
