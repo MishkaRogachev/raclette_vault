@@ -27,13 +27,6 @@ impl KeyPair {
         Ok(Self::from_secp256k1(secret_key, public_key))
     }
 
-    pub fn from_secret_key(secret_key: secp256k1::SecretKey) -> Self {
-        let secp = Secp256k1::new();
-        let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
-
-        Self::from_secp256k1(secret_key, public_key)
-    }
-
     pub fn from_secp256k1(secret_key: secp256k1::SecretKey, public_key: secp256k1::PublicKey) -> Self {
         Self {
             secret_key: Zeroizing::new(secret_key[..].try_into().expect(&err_secret_key_len())),

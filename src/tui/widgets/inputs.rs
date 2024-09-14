@@ -1,4 +1,4 @@
-use std::{clone, sync::{atomic::AtomicBool, Arc}};
+use std::sync::{atomic::AtomicBool, Arc};
 use zeroize::Zeroizing;
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent},

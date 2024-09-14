@@ -24,10 +24,6 @@ impl SeedPhrase {
         Ok(Self { mnemonic })
     }
 
-    pub fn to_string(&self) -> String {
-        self.mnemonic.to_string()
-    }
-
     pub fn from_words(words: Vec<String>) -> anyhow::Result<Self> {
         Self::from_string(words.join(" ").as_str())
     }
