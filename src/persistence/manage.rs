@@ -7,7 +7,7 @@ use super::db::Db;
 
 pub const ACCOUNTS_DIR: &str = "raclette_accounts/";
 
-const ERR_ACCOUNTS_PATH_IS_NOT_DIR: &str  = "Accounts directory does not exist or is not a directory";
+const ERR_ACCOUNTS_PATH_IS_NOT_DIR: &str  = "Accounts directory is not a directory";
 
 pub fn open_database(path: &PathBuf, address: Address, password: &str) -> anyhow::Result<Db> {
     let db_path = db_path(path, address)?;
@@ -24,7 +24,11 @@ pub fn remove_database(path: &PathBuf, address: Address) -> anyhow::Result<()> {
 pub fn list_databases(path: &PathBuf) -> anyhow::Result<Vec<Address>> {
     let accounts_dir = path.join(ACCOUNTS_DIR);
 
-    if !accounts_dir.exists() || !accounts_dir.is_dir() {
+    if !accounts_dir.exists() {
+        return Ok(vec![]);
+    }
+
+    if !accounts_dir.is_dir() {
         return Err(anyhow::anyhow!(ERR_ACCOUNTS_PATH_IS_NOT_DIR));
     }
 

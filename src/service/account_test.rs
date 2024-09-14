@@ -19,6 +19,9 @@ mod tests {
             account.address
         };
 
+        // Try wrong password
+        assert!(Account::login(address, "wrong_password").is_err());
+
         let account = Account::login(address, password)?;
         let keypair_back = account.get_keypair()?;
         keypair_back.validate()?;

@@ -3,6 +3,7 @@ use crate::{core::{key_pair::KeyPair, seed_phrase::SeedPhrase}, persistence};
 const ROOT_KEYPAIR: &[u8] = b"root_keypair";
 
 const ERR_ACCOUNT_NOT_FOUND: &str = "Account not found";
+const ERR_WRONG_PASSWORD_PROVIDED: &str = "Wrong password provided";
 
 pub struct Account {
     pub address: web3::types::Address,
@@ -28,11 +29,16 @@ impl Account {
 
     pub fn login(address: web3::types::Address, password: &str) -> anyhow::Result<Self> {
         let db = persistence::manage::open_database(&db_path()?, address, password)?;
-
-        Ok(Account {
+        let account = Account {
             address,
-            db 
-        })
+            db
+        };
+
+        if account.get_keypair().is_err() {
+            return Err(anyhow::anyhow!(ERR_WRONG_PASSWORD_PROVIDED));
+        }
+
+        Ok(account)
     }
 
     pub fn list_accounts() -> anyhow::Result<Vec<web3::types::Address>> {

@@ -42,7 +42,7 @@ impl Screen {
             let password = password.clone();
             inputs::Input::new("Enter password")
                 .mask(reveal_flag.clone())
-                .on_enter(move |value| {
+                .on_input(move |value| {
                     *password.lock().unwrap() = Zeroizing::new(value.to_string());
                 })
         };

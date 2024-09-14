@@ -20,7 +20,7 @@ pub struct Input {
     pub focused: bool,
     mask_flag: Option<Arc<AtomicBool>>,
     control: Control,
-    on_enter: Option<Box<dyn Fn(&str) + Send>>,
+    on_input: Option<Box<dyn Fn(&str) + Send>>,
 }
 
 impl Input {
@@ -33,7 +33,7 @@ impl Input {
             focused: false,
             mask_flag: None,
             control: Control::new(),
-            on_enter: None,
+            on_input: None,
         }
     }
 
@@ -48,8 +48,8 @@ impl Input {
         self
     }
 
-    pub fn on_enter<F: Fn(&str) + 'static + Send>(mut self, callback: F) -> Self {
-        self.on_enter = Some(Box::new(callback));
+    pub fn on_input<F: Fn(&str) + 'static + Send>(mut self, callback: F) -> Self {
+        self.on_input = Some(Box::new(callback));
         self
     }
 
@@ -57,28 +57,25 @@ impl Input {
         match key_event.code {
             KeyCode::Char(c) => {
                 self.value.push(c);
-                None
             }
             KeyCode::Backspace => {
                 self.value.pop();
-                None
             }
             KeyCode::Enter => {
-                if let Some(func) = &self.on_enter {
-                    let value: &str = &self.value;
-                    func(value);
-                }
                 self.last_value = self.value.clone();
                 self.focused = false;
-                None
             }
-            KeyCode::Esc => {
+            KeyCode::Esc | KeyCode::Enter => {
                 self.value = self.last_value.clone();
                 self.focused = false;
-                None
             }
-            _ => Some(Event::Key(key_event)),
+            _ => return Some(Event::Key(key_event)),
+        };
+        if let Some(func) = &self.on_input {
+            let value: &str = &self.value;
+            func(value);
         }
+        None
     }
 }
 

@@ -7,7 +7,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::tui::app::AppCommand;
+use crate::{service::account::Account, tui::app::AppCommand};
 use crate::tui::widgets::{buttons, ascii, common};
 
 const WELCOME_WIDTH: u16 = 60;
@@ -17,6 +17,7 @@ const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 pub struct Screen {
     quit_button: buttons::Button,
+    login_button: Option<buttons::Button>,
     create_button: buttons::Button,
 }
 
@@ -27,6 +28,22 @@ impl Screen {
             buttons::Button::new("Quit", Some('q'))
                 .on_down(move || { command_tx.send(AppCommand::Quit).unwrap(); })
         };
+        let login_button = {
+            let accounts = Account::list_accounts().expect("Failed to list accounts");
+            match accounts.len() {
+                0 => None,
+                1 => {
+                    let account = accounts.first().unwrap().clone();
+                    let command_tx = command_tx.clone();
+                    Some(buttons::Button::new("Login", Some('l'))
+                        .on_down(move || {
+                            let login_screen = Box::new(super::login::Screen::new(command_tx.clone(), account));
+                            command_tx.send(AppCommand::SwitchScreen(login_screen)).unwrap();
+                        }))
+                },
+                _ => panic!("Multiple accounts are not supported yet")
+            }
+        };
         let create_button = {
             buttons::Button::new("Create Master Account", Some('c'))
                 .on_down(move || {
@@ -35,14 +52,18 @@ impl Screen {
                 })
         };
 
-        Self { quit_button, create_button }
+        Self { quit_button, login_button, create_button }
     }
 }
 
 impl common::Widget for Screen {
     fn handle_event(&mut self, event: Event) -> Option<Event> {
-        [&mut self.quit_button, &mut self.create_button]
-            .iter_mut().fold(Some(event), |event, button| {
+        let mut controls = if let Some(login_button) = &mut self.login_button {
+            vec![&mut self.quit_button, login_button]
+        } else {
+            vec![&mut self.quit_button, &mut self.create_button]
+        };
+        controls.iter_mut().fold(Some(event), |event, button| {
             event.and_then(|e| button.handle_event(e))
         })
     }
@@ -87,6 +108,11 @@ impl common::Widget for Screen {
             .split(content_layout[3]);
 
         self.quit_button.process(frame, buttons_row[0]);
-        self.create_button.process(frame, buttons_row[1]);
+
+        if let Some(login_button) = &mut self.login_button {
+            login_button.process(frame, buttons_row[1]);
+        } else {
+            self.create_button.process(frame, buttons_row[1]);
+        }
     }
 }
