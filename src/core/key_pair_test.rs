@@ -9,8 +9,10 @@ mod tests {
     fn test_generate_keypair_from_seed_phrase(mtype: bip39::MnemonicType) -> anyhow::Result<()> {
         let seed_phrase = seed_phrase::SeedPhrase::generate(mtype);
         let keypair = key_pair::KeyPair::from_seed(seed_phrase.to_seed(""))?;
-        let address = keypair.to_address();
 
+        assert!(keypair.validate().is_ok(), "Invalid keypair");
+
+        let address = keypair.to_address();
         assert_eq!(address.0.len(), 20, "Address length mismatch");
 
         assert_eq!(keypair.public_key.len(), key_pair::PUBLIC_KEY_LEN, "Public key length mismatch");

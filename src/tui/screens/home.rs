@@ -4,27 +4,27 @@ use ratatui::crossterm::event::Event;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::Frame;
 
-use crate::core::key_pair::KeyPair;
+use crate::service::account::Account;
 use crate::tui::{widgets::{buttons, common}, app::AppCommand};
 
 const HOME_WIDTH: u16 = 60;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 pub struct Screen {
-    kay_pair: KeyPair,
+    account: Account,
 
     quit_button: buttons::Button,
 }
 
 impl Screen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>, kay_pair: KeyPair) -> Self {
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, account: Account) -> Self {
         let quit_button = buttons::Button::new("Quit", Some('q'))
             .on_down(move || {
                 command_tx.send(AppCommand::Quit).unwrap();
             });
 
         Self {
-            kay_pair,
+            account,
             quit_button,
         }
     }

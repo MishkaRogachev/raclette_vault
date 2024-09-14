@@ -1,6 +1,6 @@
+use std::ops::Deref;
 use bip39::Seed;
 use secp256k1::Secp256k1;
-use sha3::digest::typenum::array;
 use zeroize::Zeroizing;
 
 pub const SECRET_KEY_LEN: usize = secp256k1::constants::SECRET_KEY_SIZE;
@@ -8,6 +8,7 @@ pub const PUBLIC_KEY_LEN: usize = secp256k1::constants::PUBLIC_KEY_SIZE;
 
 const ERR_SECRET_KEY_CONVERT: &str = "Failed to convert secret_key";
 const ERR_PUBLIC_KEY_CONVERT: &str = "Failed to convert public_key";
+const ERR_PUBLIC_KEY_NOT_MATCH: &str = "Public key does not match secret key";
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyPair {
@@ -45,6 +46,17 @@ impl KeyPair {
         let hash = web3::signing::keccak256(&public_key[1..]);
         let address = &hash[12..];
         web3::types::Address::from_slice(address)
+    }
+
+    pub fn validate(&self) -> anyhow::Result<()> {
+        let secp = Secp256k1::new();
+        let secret_key = secp256k1::SecretKey::from_slice(self.secret_key.deref())?;
+        let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
+
+        if *self.public_key.deref() != public_key.serialize() {
+            return Err(anyhow::anyhow!(ERR_PUBLIC_KEY_NOT_MATCH));
+        }
+        Ok(())
     }
 }
 

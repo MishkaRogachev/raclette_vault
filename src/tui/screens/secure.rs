@@ -8,7 +8,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::{core::seed_phrase, service::access};
+use crate::{core::seed_phrase, service::account};
 use crate::tui::app::AppCommand;
 
 use crate::tui::widgets::{common, focus, buttons, inputs};
@@ -63,8 +63,8 @@ impl Screen {
             buttons::Button::new("Save & Finish", Some('s'))
                 .on_down(move || {
                     let password = password.lock().unwrap().clone();
-                    let keypair = access::create_account(&seed_phrase, &password).expect("Fatal issue with creating an account");
-                    let home_screeen = Box::new(super::home::Screen::new(command_tx.clone(), keypair.clone()));
+                    let account = account::Account::create(&seed_phrase, &password).expect("Fatal issue with creating an account");
+                    let home_screeen = Box::new(super::home::Screen::new(command_tx.clone(), account));
                     command_tx.send(AppCommand::SwitchScreen(home_screeen)).unwrap();
                 })
         };
