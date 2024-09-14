@@ -41,7 +41,7 @@ impl KeyPair {
         }
     }
 
-    pub fn to_address(&self) -> web3::types::Address {
+    pub fn get_address(&self) -> web3::types::Address {
         let public_key = &self.public_key;
         let hash = web3::signing::keccak256(&public_key[1..]);
         let address = &hash[12..];

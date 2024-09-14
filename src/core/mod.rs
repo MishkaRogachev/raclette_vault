@@ -1,4 +1,3 @@
-pub mod wallet_account;
 pub mod key_pair;
 mod key_pair_test;
 pub mod seed_phrase;

@@ -12,7 +12,7 @@ mod tests {
 
         assert!(keypair.validate().is_ok(), "Invalid keypair");
 
-        let address = keypair.to_address();
+        let address = keypair.get_address();
         assert_eq!(address.0.len(), 20, "Address length mismatch");
 
         assert_eq!(keypair.public_key.len(), key_pair::PUBLIC_KEY_LEN, "Public key length mismatch");

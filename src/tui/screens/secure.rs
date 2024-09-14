@@ -14,7 +14,7 @@ use crate::tui::app::AppCommand;
 use crate::tui::widgets::{common, focus, buttons, inputs};
 
 const SECURE_WIDTH: u16 = 80;
-const INTRO_HEIGHT: u16 = 2;
+const INTRO_HEIGHT: u16 = 1;
 const INPUT_LABEL_HEIGHT: u16 = 1;
 const INPUT_HEIGHT: u16 = 3;
 const TIP_HEIGHT: u16 = 1;
@@ -64,7 +64,7 @@ impl Screen {
                 .on_down(move || {
                     let password = password.lock().unwrap().clone();
                     let account = account::Account::create(&seed_phrase, &password).expect("Fatal issue with creating an account");
-                    let home_screeen = Box::new(super::home::Screen::new(command_tx.clone(), account));
+                    let home_screeen = Box::new(super::porfolio::Screen::new(command_tx.clone(), account));
                     command_tx.send(AppCommand::SwitchScreen(home_screeen)).unwrap();
                 })
         };
@@ -98,7 +98,7 @@ impl common::Widget for Screen {
         if first_password.is_empty() {
             self.first_input.color = Color::Red;
             self.second_input.color = Color::Red;
-            self.save_button.disabled = false;
+            self.save_button.disabled = true;
         } else {
             self.first_input.color = Color::Yellow;
 
@@ -124,12 +124,15 @@ impl common::Widget for Screen {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Min(0), // Fill height
-                Constraint::Length(INTRO_HEIGHT),
+                Constraint::Min(INTRO_HEIGHT),
                 Constraint::Length(INPUT_LABEL_HEIGHT),
                 Constraint::Length(INPUT_HEIGHT),
+                Constraint::Min(0), // Fill height
                 Constraint::Length(INPUT_LABEL_HEIGHT),
                 Constraint::Length(INPUT_HEIGHT),
+                Constraint::Min(0), // Fill height
                 Constraint::Length(TIP_HEIGHT),
+                Constraint::Min(0), // Fill height
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
                 Constraint::Min(0), // Fill height
             ])
@@ -150,14 +153,14 @@ impl common::Widget for Screen {
         let second_label = Paragraph::new(SECOND_LABEL_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
-        frame.render_widget(second_label, content_layout[4]);
+        frame.render_widget(second_label, content_layout[5]);
 
-        self.second_input.process(frame, content_layout[5]);
+        self.second_input.process(frame, content_layout[6]);
 
         let tip_text = Paragraph::new(TIP_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
-        frame.render_widget(tip_text, content_layout[6]);
+        frame.render_widget(tip_text, content_layout[8]);
 
         let buttons_row = Layout::default()
         .direction(Direction::Horizontal)
@@ -166,7 +169,7 @@ impl common::Widget for Screen {
             Constraint::Percentage(30),
             Constraint::Percentage(40),
         ])
-        .split(content_layout[7]);
+        .split(content_layout[10]);
 
         self.back_button.process(frame, buttons_row[0]);
         self.reveal_button.process(frame, buttons_row[1]);
