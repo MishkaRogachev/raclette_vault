@@ -14,12 +14,18 @@ const HOME_WIDTH: u16 = 60;
 const INTRO_HEIGHT: u16 = 1;
 const INPUT_LABEL_HEIGHT: u16 = 1;
 const INPUT_HEIGHT: u16 = 3;
+const ERROR_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
+
+const MAX_PASSWORD_ATTEMPTS: u8 = 3;
 
 const INTRO_TEXT: &str = "Login into existing account";
 const LABEL_TEXT: &str = "Enter password";
+const INCORRECT_PASSWORD_TEXT: &str = "Incorrect password. Attempts left";
 
 pub struct Screen {
+    pass_error: Arc<Mutex<Option<String>>>,
+
     input: inputs::Input,
     back_button: buttons::Button,
     reveal_button: buttons::SwapButton,
@@ -29,6 +35,8 @@ pub struct Screen {
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, address: web3::types::Address) -> Self {
         let reveal_flag = Arc::new(AtomicBool::new(false));
+        let remaining_attempts = Arc::new(Mutex::new(MAX_PASSWORD_ATTEMPTS));
+        let pass_error = Arc::new(Mutex::new(None));
         let password = Arc::new(Mutex::new(Zeroizing::new(String::new())));
 
         let input = {
@@ -52,17 +60,32 @@ impl Screen {
         let reveal_button = buttons::SwapButton::new(
             reveal_flag, "Reveal", Some('r'), "Hide", Some('h'));
 
-        let login_button = buttons::Button::new("Login", Some('l'))
-            .on_down(move || {
+        let login_button = {
             let password = password.lock().unwrap().clone();
-            let account = Account::login(address, &password)
-                .expect("Failed to login");
-
-            let home_screen = Box::new(super::porfolio::Screen::new(command_tx.clone(), account));
-            command_tx.send(AppCommand::SwitchScreen(home_screen)).unwrap();
-        });
+            let pass_error = pass_error.clone();
+            buttons::Button::new("Login", Some('l'))
+                .on_down(move || {
+                match Account::login(address, &password) {
+                    Ok(account) => {
+                        let home_screen = Box::new(super::porfolio::Screen::new(command_tx.clone(), account));
+                        command_tx.send(AppCommand::SwitchScreen(home_screen)).unwrap();
+                    },
+                    Err(_) => {
+                        let mut attempts = remaining_attempts.lock().unwrap();
+                        if *attempts > 1 {
+                            *attempts -= 1;
+                            *pass_error.lock().unwrap() = Some(format!("{}: {}", INCORRECT_PASSWORD_TEXT, attempts));
+                            // TODO: clear password input
+                        } else {
+                            command_tx.send(AppCommand::Quit).unwrap();
+                        }
+                    }
+                }
+            })
+        };
 
         Self {
+            pass_error,
             input,
             back_button,
             reveal_button,
@@ -110,6 +133,8 @@ impl common::Widget for Screen {
                 Constraint::Length(INPUT_LABEL_HEIGHT),
                 Constraint::Length(INPUT_HEIGHT),
                 Constraint::Min(0), // Fill height
+                Constraint::Length(ERROR_HEIGHT),
+                Constraint::Min(0), // Fill height
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
                 Constraint::Min(0), // Fill height
             ])
@@ -127,6 +152,13 @@ impl common::Widget for Screen {
 
         self.input.process(frame, content_layout[4]);
 
+        if let Some(error) = self.pass_error.lock().unwrap().as_ref() {
+            let error_text = Paragraph::new(error.clone())
+                .style(Style::default().fg(Color::Red).bold())
+                .alignment(Alignment::Center);
+            frame.render_widget(error_text, content_layout[6]);
+        }
+
         let buttons_row = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
@@ -134,7 +166,7 @@ impl common::Widget for Screen {
                 Constraint::Percentage(30),
                 Constraint::Percentage(40),
             ])
-            .split(content_layout[6]);
+            .split(content_layout[8]);
 
         self.back_button.process(frame, buttons_row[0]);
         self.reveal_button.process(frame, buttons_row[1]);
