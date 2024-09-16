@@ -1,14 +1,13 @@
 use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEventKind};
 
-use super::common::Widget;
-
-pub trait Focusable: Widget {
+pub trait Focusable {
     fn is_focused(&self) -> bool;
     fn set_focused(&mut self, focused: bool);
     fn contains(&self, column: u16, row: u16) -> bool;
+    fn handle_event(&mut self, event: &Event);
 }
 
-pub fn handle_event(focusables: &mut [&mut dyn Focusable], event: Event) -> Option<Event> {
+pub fn handle_scoped_event(focusables: &mut [&mut dyn Focusable], event: &Event) -> bool {
     // 1. Find the focused widget
     let mut focused_index: Option<usize> = None;
     for (i, widget) in focusables.iter_mut().enumerate() {
@@ -27,7 +26,7 @@ pub fn handle_event(focusables: &mut [&mut dyn Focusable], event: Event) -> Opti
 
                 // 2.1. If focused widget is last, unfocus it (no focus)
                 if index + 1 >= focusables.len() {
-                    return None; // No widget focused
+                    return true;
                 }
 
                 // Focus the next widget
@@ -38,7 +37,7 @@ pub fn handle_event(focusables: &mut [&mut dyn Focusable], event: Event) -> Opti
                     focusables[0].set_focused(true);
                 }
             }
-            return None; // Event handled, no need to propagate
+            return true;
         }
 
         // 3. If esc is pressed, unfocus the current widget
@@ -46,7 +45,7 @@ pub fn handle_event(focusables: &mut [&mut dyn Focusable], event: Event) -> Opti
             if let Some(index) = focused_index {
                 focusables[index].set_focused(false); // Unfocus the current widget
             }
-            return None; // Event handled, no need to propagate
+            return true;
         }
 
         // 4. If mouse click is pressed, focus the widget that was clicked
@@ -62,8 +61,8 @@ pub fn handle_event(focusables: &mut [&mut dyn Focusable], event: Event) -> Opti
 
     // 5. If there is a focused widget, call handle_event on it
     if let Some(index) = focused_index {
-        return focusables[index].handle_event(event);
+        focusables[index].handle_event(event);
+        return true;
     }
-
-    Some(event) // Event was not handled, propagate it
+    return false;
 }

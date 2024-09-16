@@ -1,14 +1,15 @@
-use std::sync::{atomic::AtomicBool, mpsc, Arc, Mutex};
+use std::sync::mpsc;
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
-    widgets::Paragraph, Frame
+    widgets::Paragraph,
+    Frame,
 };
 
 use crate::core::seed_phrase::SeedPhrase;
-use crate::tui::app::AppCommand;
-use crate::tui::widgets::{buttons, mnemonic, common};
+use crate::tui::app::{AppCommand, AppScreen};
+use crate::tui::widgets::{buttons, mnemonic};
 
 const GENERATE_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 2;
@@ -18,78 +19,80 @@ const BUTTONS_ROW_HEIGHT: u16 = 3;
 const INTRO_TEXT: &str = "Your master account will be based on the mnemonic seed phrase. \nYou may access it later in the app. Handle it with care!";
 
 pub struct Screen {
-    seed_phrase: Arc<Mutex<SeedPhrase>>,
+    command_tx: mpsc::Sender<AppCommand>,
+    seed_phrase: SeedPhrase,
 
-    word_cnt_switch: buttons::SwitchButton,
-    reveal_words: mnemonic::RevealWords,
+    word_cnt_switch: buttons::MultiSwitch,
+    mnemonic_words: mnemonic::MnemonicWords,
     back_button: buttons::Button,
     reveal_button: buttons::SwapButton,
     secure_button: buttons::Button,
 }
 
 impl Screen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
-        let seed_phrase = Arc::new(Mutex::new(SeedPhrase::generate(bip39::MnemonicType::Words12)));
-        let reveal_flag = Arc::new(AtomicBool::new(false));
-        let reveal_words = mnemonic::RevealWords::new(reveal_flag.clone());
-
-        let word_cnt_switch = {
-            let seed_phrase = seed_phrase.clone();
-            buttons::SwitchButton::new("12 words", "24 words", Some('w'))
-            .on_toggle(move |is_on| {
-                seed_phrase.lock().unwrap().switch_mnemonic_type(
-                if is_on { bip39::MnemonicType::Words24 } else { bip39::MnemonicType::Words12 });
-            })
-        };
-
-        let back_button = {
-            let command_tx = command_tx.clone();
-            buttons::Button::new("Back", Some('b'))
-                .on_down(move || {
-                    let welcome_screeen = Box::new(super::welcome::Screen::new(command_tx.clone()));
-                    command_tx.send(AppCommand::SwitchScreen(welcome_screeen)).unwrap();
-                })
-        };
-        let reveal_button = {
-            let reveal_flag = reveal_flag.clone();
-            buttons::SwapButton::new(reveal_flag, "Reveal", Some('r'), "Hide", Some('h'))
-        };
-        let secure_button = {
-            let seed_phrase = seed_phrase.clone();
-            buttons::Button::new("Secure", Some('s'))
-                .on_down(move || {
-                    let secure_screeen = Box::new(super::secure::Screen::new(command_tx.clone(), seed_phrase.lock().unwrap().clone()));
-                    command_tx.send(AppCommand::SwitchScreen(secure_screeen)).unwrap();
-                })
-        };
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, seed_phrase: SeedPhrase) -> Self {
+        let word_cnt_switch =
+            buttons::MultiSwitch::new(vec![("12 words", Some('1')), ("24 words", Some('2'))]);
+        let mnemonic_words = mnemonic::MnemonicWords::new(seed_phrase.get_words());
+        let back_button = buttons::Button::new("Back", Some('b'));
+        let reveal_button = buttons::SwapButton::new(
+            buttons::Button::new("Reveal", Some('r')).warning(),
+            buttons::Button::new("Hide", Some('h')).primary(),
+        );
+        let secure_button = buttons::Button::new("Secure", Some('s'));
 
         Self {
+            command_tx,
             seed_phrase,
             word_cnt_switch,
-            reveal_words,
+            mnemonic_words,
             back_button,
             reveal_button,
-            secure_button
+            secure_button,
         }
     }
 }
 
-impl common::Widget for Screen {
-    fn handle_event(&mut self, event: Event) -> Option<Event> {
-        let mut controls: Vec<&mut dyn common::Widget> = vec![
-            &mut self.word_cnt_switch,
-            &mut self.back_button,
-            &mut self.reveal_button,
-            &mut self.secure_button
-        ];
-        controls.iter_mut().fold(Some(event), |event, button| {
-            event.and_then(|e| button.handle_event(e))
-        })
+impl AppScreen for Screen {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+        if let Some(is_on) = self.word_cnt_switch.handle_event(&event) {
+            self.seed_phrase.switch_mnemonic_type(if is_on == 1 {
+                bip39::MnemonicType::Words24
+            } else {
+                bip39::MnemonicType::Words12
+            });
+            self.mnemonic_words.words = self.seed_phrase.get_words();
+            return Ok(());
+        }
+
+        if let Some(()) = self.back_button.handle_event(&event) {
+            let welcome_screen = Box::new(super::welcome::Screen::new(self.command_tx.clone()));
+            self.command_tx
+                .send(AppCommand::SwitchScreen(welcome_screen))
+                .unwrap();
+            return Ok(());
+        }
+
+        if let Some(reveal) = self.reveal_button.handle_event(&event) {
+            self.mnemonic_words.masked = !reveal;
+            return Ok(());
+        }
+
+        if let Some(()) = self.secure_button.handle_event(&event) {
+            let secure_screeen = Box::new(super::secure::Screen::new(
+                self.command_tx.clone(),
+                self.seed_phrase.clone(),
+            ));
+            self.command_tx
+                .send(AppCommand::SwitchScreen(secure_screeen))
+                .unwrap();
+            return Ok(());
+        }
+        Ok(())
     }
 
-    fn process(&mut self, frame: &mut Frame, area: Rect) {
-        self.reveal_words.set_words(self.seed_phrase.lock().unwrap().to_words());
-
+    fn render(&mut self, frame: &mut Frame) {
+        let area = frame.area();
         let horizontal_padding = (area.width.saturating_sub(GENERATE_WIDTH)) / 2;
 
         let centered_area = Rect {
@@ -116,20 +119,20 @@ impl common::Widget for Screen {
             .alignment(Alignment::Center);
         frame.render_widget(intro_text, content_layout[1]);
 
-        self.word_cnt_switch.process(frame, content_layout[2]);
-        self.reveal_words.process(frame, content_layout[3]);
+        self.word_cnt_switch.render(frame, content_layout[2]);
+        self.mnemonic_words.render(frame, content_layout[3]);
 
         let buttons_row = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(30),
-            Constraint::Percentage(30),
-            Constraint::Percentage(40),
-        ])
-        .split(content_layout[4]);
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(30),
+                Constraint::Percentage(30),
+                Constraint::Percentage(40),
+            ])
+            .split(content_layout[4]);
 
-        self.back_button.process(frame, buttons_row[0]);
-        self.reveal_button.process(frame, buttons_row[1]);
-        self.secure_button.process(frame, buttons_row[2]);
+        self.back_button.render(frame, buttons_row[0]);
+        self.reveal_button.render(frame, buttons_row[1]);
+        self.secure_button.render(frame, buttons_row[2]);
     }
 }

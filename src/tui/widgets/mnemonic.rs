@@ -1,43 +1,32 @@
-use std::sync::{atomic::AtomicBool, Arc};
-
 use ratatui::{
-    crossterm::event::Event,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Text, widgets::Paragraph,
     Frame
 };
 
-const WORD_MASKED: &str = "******";
+const MASKED_PLACEHOLDER: &str = "******";
 pub const MNEMONIC_HEIGHT: u16 = 30;
 
-pub struct RevealWords {
-    words: Vec<String>,
-    pub reveal_flag: Arc<AtomicBool>,
+pub struct MnemonicWords {
+    pub words: Vec<String>,
+    pub masked: bool,
 }
 
-impl RevealWords {
-    pub fn new(reveal_flag: Arc<AtomicBool>) -> Self {
-        Self { words: vec![], reveal_flag }
+impl MnemonicWords {
+    pub fn new(words: Vec<String>) -> Self {
+        Self { words, masked: true }
     }
 
-    pub fn set_words(&mut self, words: Vec<String>) {
-        self.words = words;
-    }
-}
-
-impl super::common::Widget for RevealWords {
-    fn handle_event(&mut self, event: Event) -> Option<Event> {
-        Some(event)
-    }
-
-    fn process(&mut self, frame: &mut Frame, area: Rect) {
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
         let word_count = self.words.len();
+        if word_count == 0 {
+            return;
+        }
+
         let column_count = if word_count <= 12 { 2 } else { 4 };
         let words_per_column = (word_count + column_count - 1) / column_count;
         let word_height = std::cmp::max(1, area.height / (words_per_column as u16));
-
-        let revealed = self.reveal_flag.load(std::sync::atomic::Ordering::Relaxed);
 
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
@@ -65,10 +54,10 @@ impl super::common::Widget for RevealWords {
                 .split(*column_area);
 
             for (i, word_area) in word_layout.iter().enumerate() {
-                let word = if revealed {
-                    &words_in_column[i]
+                let word = if self.masked {
+                    MASKED_PLACEHOLDER
                 } else {
-                    WORD_MASKED
+                    &words_in_column[i]
                 };
                 frame.render_widget(render_centered_word(word, start_idx + i), *word_area);
             }

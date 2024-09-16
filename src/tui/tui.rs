@@ -5,7 +5,7 @@ use ratatui::{
     prelude::CrosstermBackend, Terminal
 };
 
-use super::{app::App, widgets::common::Widget};
+use super::app::{App, AppScreen};
 
 const MIN_TERMINAL_WIDTH: u16 = 60;
 const MIN_TERMINAL_HEIGHT: u16 = 13;
@@ -37,13 +37,12 @@ impl Tui {
 
                 terminal.draw(|frame| {
                     let area = frame.area();
-
                     if area.width < MIN_TERMINAL_WIDTH || area.height < MIN_TERMINAL_HEIGHT {
                         let warning = ratatui::widgets::Paragraph::new("Terminal window is too small")
                             .alignment(ratatui::layout::Alignment::Center);
                         frame.render_widget(warning, area);
                     } else {
-                        self.app.process(frame, area);
+                        self.app.render(frame);
                     }
                 }).unwrap();
             }

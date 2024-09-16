@@ -1,18 +1,22 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
-use ratatui::{crossterm::event::Event, layout::Rect, Frame};
+use ratatui::{crossterm::event::Event, Frame};
 
-use super::widgets::common::Widget;
 use super::screens::welcome;
 
+pub trait AppScreen {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<()>;
+    fn render(&mut self, frame: &mut Frame);
+}
+
 pub enum AppCommand {
-    SwitchScreen(Box<dyn Widget + Send>),
+    SwitchScreen(Box<dyn AppScreen + Send>),
     Quit,
 }
 
 pub struct App {
     shutdown_handle: Arc<AtomicBool>,
-    current_screen: Box<dyn Widget + Send>,
+    current_screen: Box<dyn AppScreen + Send>,
     command_rx: mpsc::Receiver<AppCommand>,
     events: tokio::sync::broadcast::Receiver<Event>
 }
@@ -26,7 +30,7 @@ impl App {
 
     pub fn process_events(&mut self) {
         if let Ok(event) = self.events.try_recv() {
-            self.handle_event(event);
+            self.handle_event(event).expect("Failed to handle screen event");
         }
 
         if let Ok(command) = self.command_rx.try_recv() {
@@ -42,12 +46,12 @@ impl App {
     }
 }
 
-impl super::widgets::common::Widget for App {
-    fn handle_event(&mut self, event: Event) -> Option<Event> {
+impl AppScreen for App {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         self.current_screen.handle_event(event)
     }
 
-    fn process(&mut self, frame: &mut Frame, area: Rect) {
-        self.current_screen.process(frame, area);
+    fn render(&mut self, frame: &mut Frame) {
+        self.current_screen.render(frame);
     }
 }

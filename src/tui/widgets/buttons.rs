@@ -1,38 +1,32 @@
-use std::sync::{atomic::AtomicBool, Arc};
 use ratatui::{
-    crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind},
-    layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    crossterm::event::{Event, KeyCode, MouseButton, MouseEventKind},
+    layout::{Constraint, Direction, Layout, Position, Rect},
+    style::{Color, Modifier, Style, Stylize},
+    symbols,
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
     Frame
 };
 
-use super::common::{Control, Widget};
-
 pub struct Button {
     pub label: String,
     pub hotkey: Option<char>,
     pub disabled: bool,
+    pub active: bool,
     pub color: Color,
-    on_up: Option<Box<dyn Fn() + Send>>,
-    on_down: Option<Box<dyn Fn() + Send>>,
-    control: Control,
+    pub is_hovered: bool,
+    area: Rect,
 }
 
-pub struct SwitchButton {
-    pub off_label: String,
-    pub on_label: String,
-    pub hotkey: Option<char>,
-    pub is_on: bool,
-    on_toggle: Option<Box<dyn Fn(bool) + Send>>,
-    control: Control,
+pub struct MultiSwitch {
+    pub buttons: Vec<Button>,
+    pub active_index: usize,
 }
 
 pub struct SwapButton {
+    pub state: bool,
     pub first: Button,
     pub second: Button,
-    pub state: Arc<AtomicBool>,
 }
 
 impl Button {
@@ -41,22 +35,11 @@ impl Button {
             label: label.to_string(),
             hotkey,
             disabled: false,
+            active: false,
             color: Color::Yellow,
-            on_up: None,
-            on_down: None,
-            control: Control::new(),
+            is_hovered: false,
+            area: Rect::default(),
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn on_up<F: Fn() + 'static + Send>(mut self, f: F) -> Self {
-        self.on_up = Some(Box::new(f));
-        self
-    }
-
-    pub fn on_down<F: Fn() + 'static + Send>(mut self, f: F) -> Self {
-        self.on_down = Some(Box::new(f));
-        self
     }
 
     pub fn warning(mut self) -> Self {
@@ -69,68 +52,50 @@ impl Button {
         self
     }
 
-    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> Option<Event> {
-        self.control.is_hovered = self.control.contains(mouse_event.column, mouse_event.row);
-        if self.control.is_down && mouse_event.kind == MouseEventKind::Up(MouseButton::Left) {
-            self.control.is_down = false;
-            if let Some(func) = &self.on_up {
-                func();
-                return None;
-            }
-        } else if self.control.is_hovered && mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
-            if let Some(func) = &self.on_down {
-                self.control.is_down = true;
-                func();
-                return None;
-            }
-        }
-        Some(Event::Mouse(mouse_event))
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) -> Option<Event> {
-        let hotkey = if let Some(hotkey) = self.hotkey {
-            hotkey 
-        } else {
-            return Some(Event::Key(key_event))
-        };
-
-        if key_event.code == KeyCode::Char(hotkey) {
-            if let Some(func) = &self.on_down {
-                func();
-                return None;
-            }
-        }
-        Some(Event::Key(key_event))
-    }
-}
-
-impl Widget for Button {
-    fn handle_event(&mut self, event: Event) -> Option<Event> {
+    pub fn handle_event(&mut self, event: &Event) -> Option<()> {
         if self.disabled {
-            return Some(event);
+            return None;
         }
 
         match event {
-            Event::Mouse(mouse_event) => self.handle_mouse_event(mouse_event),
-            Event::Key(key_event) => self.handle_key_event(key_event),
-            _ => Some(event),
+            Event::Mouse(mouse_event) => {
+                self.is_hovered = self.area.contains(Position { x: mouse_event.column, y: mouse_event.row });
+                if self.is_hovered && mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
+                    return Some(());
+                }
+                None
+            },
+            Event::Key(key_event) => {
+                if let Some(hotkey) = self.hotkey {
+                    if key_event.code == KeyCode::Char(hotkey) {
+                        return Some(());
+                    }
+                }
+                None
+            },
+            _ => None
         }
     }
 
-    fn process(&mut self, frame: &mut Frame, area: Rect) {
-        self.control.area = Some(area); // Store the button's area for later use
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        self.area = area; // Store the button's area for mouse handling
 
-        let color = if self.disabled { Color::DarkGray } else { self.color };
-        let style = Style::default().fg(color).add_modifier(Modifier::BOLD);
+        let style = Style::default().fg(self.color).add_modifier(Modifier::BOLD);
         let block = Block::default().borders(Borders::ALL).border_style(style);
 
-        let (block, style) = if !self.disabled && self.control.is_hovered {
-            ( block, style.bg(color).fg(Color::Black))
+        let block = if self.disabled {
+            block.dim()
+        } else { 
+            if self.active { block } else { block } // FIXME: active look
+        };
+
+        let (block, style) = if !self.disabled && self.is_hovered {
+            ( block.border_set(symbols::border::DOUBLE), style.bg(self.color).fg(Color::Black))
         } else {
             (block, style)
         };
 
-        let label_line =  render_label_with_hotkey(&self.label, self.hotkey, style);
+        let label_line = render_label_with_hotkey(&self.label, self.hotkey, style);
         let paragraph = Paragraph::new(label_line)
             .block(block)
             .alignment(ratatui::layout::Alignment::Center);
@@ -138,117 +103,82 @@ impl Widget for Button {
     }
 }
 
-impl SwitchButton {
-    pub fn new(off_label: &str, on_label: &str, hotkey: Option<char>) -> Self {
-        Self {
-            off_label: off_label.to_string(),
-            on_label: on_label.to_string(),
-            hotkey,
-            is_on: false,
-            on_toggle: None,
-            control: Control::new(),
+impl MultiSwitch {
+    pub fn new(buttons: Vec<(&str, Option<char>)>) -> Self {
+        let mut buttons: Vec<_> = buttons
+            .into_iter()
+            .map(|(label, hotkey)| Button::new(label, hotkey))
+            .collect();
+        let active_index = 0;
+        buttons[active_index].active = true;
+
+        Self { buttons, active_index }
+    }
+
+    pub fn handle_event(&mut self, event: &Event) -> Option<usize> {
+        for (i, button) in self.buttons.iter_mut().enumerate() {
+            if let Some(()) = button.handle_event(event) {
+                self.set_active(i);
+                return Some(i);
+            }
+        }
+        None
+    }
+
+    pub fn set_active(&mut self, index: usize) {
+        if index < self.buttons.len() {
+            if let Some(button) = self.buttons.get_mut(self.active_index) {
+                button.active = false;
+            }
+
+            if let Some(button) = self.buttons.get_mut(index) {
+                button.active = true;
+                self.active_index = index;
+            }
         }
     }
 
-    pub fn on_toggle<F: Fn(bool) + 'static + Send>(mut self, f: F) -> Self {
-        self.on_toggle = Some(Box::new(f));
-        self
-    }
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        let button_width = area.width / self.buttons.len() as u16;
+        let buttons_area = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(
+                vec![Constraint::Length(button_width as u16); self.buttons.len()]
+            )
+            .margin(0)
+            .split(area);
 
-    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> Option<Event> {
-        self.control.handle_mouse_hover(mouse_event);
-
-        if self.control.is_hovered && mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
-            self.is_on = !self.is_on;
-            if let Some(func) = &self.on_toggle {
-                func(self.is_on);
-            }
-            return None;
+        for (i, button) in self.buttons.iter_mut().enumerate() {
+            button.render(frame, buttons_area[i]);
         }
-
-        Some(Event::Mouse(mouse_event))
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) -> Option<Event> {
-        if let Some(hotkey) = self.hotkey {
-            if key_event.code == KeyCode::Char(hotkey) {
-                self.is_on = !self.is_on;
-                if let Some(func) = &self.on_toggle {
-                    func(self.is_on);
-                }
-                return None;
-            }
-        } else {
-            return Some(Event::Key(key_event))
-        };
-        Some(Event::Key(key_event))
     }
 }
 
-impl Widget for SwitchButton {
-    fn handle_event(&mut self, event: Event) -> Option<Event> {
-        match event {
-            Event::Mouse(mouse_event) => self.handle_mouse_event(mouse_event),
-            Event::Key(key_event) => self.handle_key_event(key_event),
-            _ => Some(event),
+impl SwapButton {
+    pub fn new(first: Button, second: Button) -> Self {
+        Self {
+            state: false,
+            first,
+            second,
         }
     }
 
-    fn process(&mut self, frame: &mut Frame, area: Rect) {
-        self.control.area = Some(area);
+    pub fn handle_event(&mut self, event: &Event) -> Option<bool> {
+        let button = if self.state { &mut self.second } else { &mut self.first };
+        if let Some(()) = button.handle_event(event) {
+            self.state = !self.state;
+            Some(self.state)
+        } else {
+            None
+        }
+    }
 
-        let active_style = Style::default().fg(Color::Black).bg(Color::Yellow).add_modifier(Modifier::BOLD);
-        let inactive_style = Style::default().fg(Color::White);
-
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Yellow));
-        let inner_area = block.inner(area);
-
-        frame.render_widget(block, area);
-
-        let column_constraints = [
-            Constraint::Percentage(49),
-            Constraint::Length(1),
-            Constraint::Percentage(49),
-        ];
-
-        let layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(column_constraints)
-            .split(inner_area);
-
-        let off_area = layout[0];
-        let separator_area = layout[1];
-        let on_area = layout[2];
-
-        // Render the "OFF" and "ON" labels with respective styles
-        let off_paragraph = Paragraph::new(render_label_with_hotkey(
-            &self.off_label,
-            self.hotkey,
-            if !self.is_on { active_style } else { inactive_style },
-        ))
-        .alignment(ratatui::layout::Alignment::Center)
-        .block(Block::default().borders(Borders::NONE));
-
-        let on_paragraph = Paragraph::new(render_label_with_hotkey(
-            &self.on_label,
-            self.hotkey,
-            if self.is_on { active_style } else { inactive_style },
-        ))
-        .alignment(ratatui::layout::Alignment::Center)
-        .block(Block::default().borders(Borders::NONE));
-
-        // Render the separator in the center
-        let separator_paragraph = Paragraph::new("|")
-            .alignment(ratatui::layout::Alignment::Center)
-            .style(Style::default().fg(Color::Yellow))
-            .block(Block::default().borders(Borders::NONE));
-
-        // Render the OFF label, separator, and ON label in the appropriate areas
-        frame.render_widget(off_paragraph, off_area);
-        frame.render_widget(separator_paragraph, separator_area);
-        frame.render_widget(on_paragraph, on_area);
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        if self.state {
+            self.second.render(frame, area);
+        } else {
+            self.first.render(frame, area);
+        }
     }
 }
 
@@ -271,67 +201,5 @@ pub fn render_label_with_hotkey(label: &str, hotkey: Option<char>, style: Style)
         Line::from(spans)
     } else {
         Line::from(Span::styled(label.to_string(), style))
-    }
-}
-
-impl SwapButton {
-    pub fn new(
-        state: Arc<AtomicBool>,
-        first_label: &str,
-        first_hotkey: Option<char>,
-        second_label: &str,
-        second_hotkey: Option<char>
-    ) -> Self {
-        let first = {
-            let state = state.clone();
-            Button::new(first_label, first_hotkey)
-                .on_down(move || {
-                    state.store(true, std::sync::atomic::Ordering::Relaxed);
-                })
-                .warning()
-        };
-        let second = {
-            let state = state.clone();
-            Button::new(second_label, second_hotkey)
-                .on_down(move || {
-                    state.store(false, std::sync::atomic::Ordering::Relaxed);
-                })
-                .primary()
-        };
-        Self { first, second, state }
-    }
-
-    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> Option<Event> {
-        if self.state.load(std::sync::atomic::Ordering::Relaxed) {
-            self.second.handle_event(Event::Mouse(mouse_event))
-        } else {
-            self.first.handle_event(Event::Mouse(mouse_event))
-        }
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) -> Option<Event> {
-        if self.state.load(std::sync::atomic::Ordering::Relaxed) {
-            self.second.handle_event(Event::Key(key_event))
-        } else {
-            self.first.handle_event(Event::Key(key_event))
-        }
-    }
-}
-
-impl Widget for SwapButton {
-    fn handle_event(&mut self, event: Event) -> Option<Event> {
-        match event {
-            Event::Mouse(mouse_event) => self.handle_mouse_event(mouse_event),
-            Event::Key(key_event) => self.handle_key_event(key_event),
-            _ => Some(event),
-        }
-    }
-
-    fn process(&mut self, frame: &mut Frame, area: Rect) {
-        if self.state.load(std::sync::atomic::Ordering::Relaxed) {
-            self.second.process(frame, area);
-        } else {
-            self.first.process(frame, area);
-        }
     }
 }

@@ -1,4 +1,4 @@
-use std::sync::{atomic::AtomicBool, mpsc, Arc, Mutex};
+use std::sync::mpsc;
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -8,7 +8,7 @@ use ratatui::{
 use zeroize::Zeroizing;
 
 use crate::service::account::Account;
-use crate::tui::{widgets::{common, focus, buttons, inputs}, app::AppCommand};
+use crate::tui::{widgets::{focus, buttons, inputs}, app::{AppCommand, AppScreen}};
 
 const HOME_WIDTH: u16 = 60;
 const INTRO_HEIGHT: u16 = 1;
@@ -23,8 +23,11 @@ const INTRO_TEXT: &str = "Login into existing account";
 const LABEL_TEXT: &str = "Enter password";
 const INCORRECT_PASSWORD_TEXT: &str = "Incorrect password. Attempts left";
 
-pub struct Screen {
-    pass_error: Arc<Mutex<Option<String>>>,
+pub struct Screen { 
+    command_tx: mpsc::Sender<AppCommand>,
+    address: web3::types::Address,
+    remaining_attempts: u8,
+    pass_error: Option<String>,
 
     input: inputs::Input,
     back_button: buttons::Button,
@@ -34,57 +37,20 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, address: web3::types::Address) -> Self {
-        let reveal_flag = Arc::new(AtomicBool::new(false));
-        let remaining_attempts = Arc::new(Mutex::new(MAX_PASSWORD_ATTEMPTS));
-        let pass_error = Arc::new(Mutex::new(None));
-        let password = Arc::new(Mutex::new(Zeroizing::new(String::new())));
+        let remaining_attempts = MAX_PASSWORD_ATTEMPTS;
+        let pass_error = None;
 
-        let input = {
-            let password = password.clone();
-            inputs::Input::new("Enter password")
-                .mask(reveal_flag.clone())
-                .on_input(move |value| {
-                    *password.lock().unwrap() = Zeroizing::new(value.to_string());
-                })
-        };
-
-        let back_button = {
-            let command_tx = command_tx.clone();
-            buttons::Button::new("Back", Some('b'))
-                .on_down(move || {
-                    let welcome_screeen = Box::new(super::welcome::Screen::new(command_tx.clone()));
-                    command_tx.send(AppCommand::SwitchScreen(welcome_screeen)).unwrap();
-                })
-        };
-
+        let input = inputs::Input::new("Enter password").masked();
+        let back_button = buttons::Button::new("Back", Some('b'));
         let reveal_button = buttons::SwapButton::new(
-            reveal_flag, "Reveal", Some('r'), "Hide", Some('h'));
-
-        let login_button = {
-            let password = password.lock().unwrap().clone();
-            let pass_error = pass_error.clone();
-            buttons::Button::new("Login", Some('l'))
-                .on_down(move || {
-                match Account::login(address, &password) {
-                    Ok(account) => {
-                        let home_screen = Box::new(super::porfolio::Screen::new(command_tx.clone(), account));
-                        command_tx.send(AppCommand::SwitchScreen(home_screen)).unwrap();
-                    },
-                    Err(_) => {
-                        let mut attempts = remaining_attempts.lock().unwrap();
-                        if *attempts > 1 {
-                            *attempts -= 1;
-                            *pass_error.lock().unwrap() = Some(format!("{}: {}", INCORRECT_PASSWORD_TEXT, attempts));
-                            // TODO: clear password input
-                        } else {
-                            command_tx.send(AppCommand::Quit).unwrap();
-                        }
-                    }
-                }
-            })
-        };
+            buttons::Button::new("Reveal", Some('r')).warning(),
+            buttons::Button::new("Hide", Some('h')).primary());
+        let login_button = buttons::Button::new("Login", Some('l'));
 
         Self {
+            command_tx,
+            address,
+            remaining_attempts,
             pass_error,
             input,
             back_button,
@@ -94,25 +60,45 @@ impl Screen {
     }
 }
 
-impl common::Widget for Screen {
-    fn handle_event(&mut self, event: Event) -> Option<Event> {
-        let event = focus::handle_event(&mut [&mut self.input], event);
-        match event {
-            Some(event) => {
-                let mut controls: Vec<&mut dyn common::Widget> = vec![
-                    &mut self.back_button,
-                    &mut self.reveal_button,
-                    &mut self.login_button
-                ];
-                controls.iter_mut().fold(Some(event), |event, button| {
-                    event.and_then(|e| button.handle_event(e))
-                })
-            },
-            None => None
+impl AppScreen for Screen {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+        focus::handle_scoped_event(&mut [&mut self.input], &event);
+
+        if let Some(()) = self.back_button.handle_event(&event) {
+            let welcome_screen = Box::new(super::welcome::Screen::new(self.command_tx.clone()));
+            self.command_tx.send(AppCommand::SwitchScreen(welcome_screen)).unwrap();
+            return Ok(());
         }
+
+        if let Some(reveal) = self.reveal_button.handle_event(&event) {
+            self.input.masked = !reveal;
+            return Ok(());
+        }
+
+        if let Some(()) = self.login_button.handle_event(&event) {
+            match Account::login(self.address, &self.input.value) {
+                Ok(account) => {
+                    let porfolio = Box::new(super::porfolio::Screen::new(
+                        self.command_tx.clone(), account));
+                    self.command_tx.send(AppCommand::SwitchScreen(porfolio)).unwrap();
+                },
+                Err(_) => {
+                    if self.remaining_attempts > 1 {
+                        self.remaining_attempts -= 1;
+                        self.pass_error = Some(format!("{}: {}", INCORRECT_PASSWORD_TEXT, self.remaining_attempts));
+                        self.input.value = Zeroizing::new(String::new());
+                    } else {
+                        self.command_tx.send(AppCommand::Quit).unwrap();
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
-    fn process(&mut self, frame: &mut Frame, area: Rect) {
+    fn render(&mut self, frame: &mut Frame) {
+        let area = frame.area();
         self.login_button.disabled = self.input.value.is_empty();
 
         let horizontal_padding = (area.width.saturating_sub(HOME_WIDTH)) / 2;
@@ -150,10 +136,10 @@ impl common::Widget for Screen {
             .alignment(Alignment::Center);
         frame.render_widget(label, content_layout[3]);
 
-        self.input.process(frame, content_layout[4]);
+        self.input.render(frame, content_layout[4]);
 
-        if let Some(error) = self.pass_error.lock().unwrap().as_ref() {
-            let error_text = Paragraph::new(error.clone())
+        if let Some(error_string) = &self.pass_error {
+            let error_text = Paragraph::new(error_string.clone())
                 .style(Style::default().fg(Color::Red).bold())
                 .alignment(Alignment::Center);
             frame.render_widget(error_text, content_layout[6]);
@@ -168,8 +154,8 @@ impl common::Widget for Screen {
             ])
             .split(content_layout[8]);
 
-        self.back_button.process(frame, buttons_row[0]);
-        self.reveal_button.process(frame, buttons_row[1]);
-        self.login_button.process(frame, buttons_row[2]);
+        self.back_button.render(frame, buttons_row[0]);
+        self.reveal_button.render(frame, buttons_row[1]);
+        self.login_button.render(frame, buttons_row[2]);
     }
 }

@@ -1,94 +1,45 @@
-use std::sync::{atomic::AtomicBool, Arc};
 use zeroize::Zeroizing;
 use ratatui::{
-    crossterm::event::{Event, KeyCode, KeyEvent},
-    layout::Rect,
+    crossterm::event::{Event, KeyCode},
+    layout::{Position, Rect},
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
     Frame
 };
 
-
-use super::{common::{Control, Widget}, focus::Focusable};
+use super::focus::Focusable;
 
 pub struct Input {
-    last_value: Zeroizing<String>,
     pub value: Zeroizing<String>,
     pub placeholder: String,
+    pub disabled: bool,
     pub color: Color,
     pub focused: bool,
-    mask_flag: Option<Arc<AtomicBool>>,
-    control: Control,
-    on_input: Option<Box<dyn Fn(&str) + Send>>,
+    pub masked: bool,
+    area: Rect,
 }
 
 impl Input {
     pub fn new(placeholder: &str) -> Self {
         Self {
-            last_value: Zeroizing::new(String::new()),
             value: Zeroizing::new(String::new()),
             placeholder: placeholder.to_string(),
+            disabled: false,
             color: Color::Yellow,
             focused: false,
-            mask_flag: None,
-            control: Control::new(),
-            on_input: None,
+            masked: false,
+            area: Rect::default()
         }
     }
 
-    pub fn mask(mut self, mask: Arc<AtomicBool>) -> Self {
-        self.mask_flag = Some(mask);
+    pub fn masked(mut self) -> Self {
+        self.masked = true;
         self
     }
 
-    pub fn set_value(mut self, value: &str) -> Self {
-        *self.last_value = value.to_string();
-        *self.value = value.to_string();
-        self
-    }
-
-    pub fn on_input<F: Fn(&str) + 'static + Send>(mut self, callback: F) -> Self {
-        self.on_input = Some(Box::new(callback));
-        self
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) -> Option<Event> {
-        match key_event.code {
-            KeyCode::Char(c) => {
-                self.value.push(c);
-            }
-            KeyCode::Backspace => {
-                self.value.pop();
-            }
-            KeyCode::Enter => {
-                self.last_value = self.value.clone();
-                self.focused = false;
-            }
-            KeyCode::Esc | KeyCode::Enter => {
-                self.value = self.last_value.clone();
-                self.focused = false;
-            }
-            _ => return Some(Event::Key(key_event)),
-        };
-        if let Some(func) = &self.on_input {
-            let value: &str = &self.value;
-            func(value);
-        }
-        None
-    }
-}
-
-impl Widget for Input {
-    fn handle_event(&mut self, event: Event) -> Option<Event> {
-        match event {
-            Event::Key(key_event) => self.handle_key_event(key_event),
-            _ => Some(event),
-        }
-    }
-
-    fn process(&mut self, frame: &mut Frame, area: Rect) {
-        self.control.area = Some(area);
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        self.area = area; // Store the button's area for mouse handling
 
         let style = if self.focused {
             Style::default().fg(Color::Black).bg(self.color)
@@ -100,7 +51,7 @@ impl Widget for Input {
         let display_value = if self.value.is_empty() {
             Span::styled(&self.placeholder, Style::default().fg(Color::DarkGray))
         } else {
-            if self.mask_flag.is_some() && !self.mask_flag.as_ref().unwrap().load(std::sync::atomic::Ordering::Relaxed) {
+            if self.masked {
                 Span::styled("*".repeat(self.value.len()), style)
             } else {
                 let value: &str = &self.value;
@@ -123,6 +74,24 @@ impl Focusable for Input {
     }
 
     fn contains(&self, column: u16, row: u16) -> bool {
-        self.control.contains(column, row)
+        self.area.contains(Position { x: column, y: row })
+    }
+
+    fn handle_event(&mut self, event: &Event) {
+        if self.disabled {
+            return;
+        }
+
+        if let Event::Key(key_event) = event {
+            match key_event.code {
+                KeyCode::Char(c) => {
+                    self.value.push(c);
+                }
+                KeyCode::Backspace => {
+                    self.value.pop();
+                }
+                _ => {},
+            }
+        }
     }
 }

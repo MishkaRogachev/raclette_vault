@@ -1,5 +1,4 @@
-use std::sync::{atomic::AtomicBool, mpsc, Arc};
-
+use std::sync::mpsc;
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -8,7 +7,7 @@ use ratatui::{
 };
 
 use crate::service::account::Account;
-use crate::tui::{widgets::{buttons, common}, app::AppCommand};
+use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
 
 const HOME_WIDTH: u16 = 60;
 const INTRO_HEIGHT: u16 = 1;
@@ -18,6 +17,7 @@ const BUTTONS_ROW_HEIGHT: u16 = 3;
 const INTRO_TEXT: &str = "Portfolio";
 
 pub struct Screen {
+    command_tx: mpsc::Sender<AppCommand>,
     account: Account,
 
     quit_button: buttons::Button,
@@ -26,17 +26,14 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, account: Account) -> Self {
-        let reveal_flag = Arc::new(AtomicBool::new(false));
-
-        let quit_button = buttons::Button::new("Quit", Some('q'))
-            .on_down(move || {
-                command_tx.send(AppCommand::Quit).unwrap();
-            });
-
+        let quit_button = buttons::Button::new("Quit", Some('q'));
         let reveal_button = buttons::SwapButton::new(
-            reveal_flag, "Reveal", Some('r'), "Hide", Some('h'));
+            buttons::Button::new("Reveal", Some('r')).warning(),
+            buttons::Button::new("Hide", Some('h')).primary(),
+        );
 
         Self {
+            command_tx,
             account,
             quit_button,
             reveal_button,
@@ -44,18 +41,18 @@ impl Screen {
     }
 }
 
-impl common::Widget for Screen {
-    fn handle_event(&mut self, event: Event) -> Option<Event> {
-        let mut controls: Vec<&mut dyn common::Widget> = vec![
-            &mut self.quit_button,
-            &mut self.reveal_button,
-        ];
-        controls.iter_mut().fold(Some(event), |event, button| {
-            event.and_then(|e| button.handle_event(e))
-        })
+impl AppScreen for Screen {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+        if let Some(()) = self.quit_button.handle_event(&event) {
+            self.command_tx.send(AppCommand::Quit).unwrap();
+            return Ok(());
+        }
+
+        return Ok(());
     }
 
-    fn process(&mut self, frame: &mut Frame, area: Rect) {
+    fn render(&mut self, frame: &mut Frame) {
+        let area = frame.area();
         let horizontal_padding = (area.width.saturating_sub(HOME_WIDTH)) / 2;
 
         let centered_area = Rect {
@@ -97,7 +94,7 @@ impl common::Widget for Screen {
             ])
             .split(content_layout[5]);
 
-        self.quit_button.process(frame, buttons_row[0]);
-        self.reveal_button.process(frame, buttons_row[1]);
+        self.quit_button.render(frame, buttons_row[0]);
+        self.reveal_button.render(frame, buttons_row[1]);
     }
 }

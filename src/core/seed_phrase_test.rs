@@ -8,7 +8,7 @@ mod tests {
     fn test_generate_seed_phrase_to_words_and_back(mtype: bip39::MnemonicType) -> anyhow::Result<()> {
         let seed_phrase = SeedPhrase::generate(mtype);
 
-        let words = seed_phrase.to_words();
+        let words = seed_phrase.get_words();
         assert_eq!(words.len(), mtype.word_count());
 
         let seed_phrase_back = SeedPhrase::from_words(words)?;

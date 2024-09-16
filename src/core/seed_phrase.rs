@@ -28,7 +28,7 @@ impl SeedPhrase {
         Self::from_string(words.join(" ").as_str())
     }
 
-    pub fn to_words(&self) -> Vec<String> {
+    pub fn get_words(&self) -> Vec<String> {
         self.mnemonic.to_string().split(' ').map(|s| s.to_string()).collect()
     }
 }
