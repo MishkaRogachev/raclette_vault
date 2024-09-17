@@ -1,12 +1,14 @@
 use ratatui::{
-    crossterm::event::{Event, KeyCode, MouseButton, MouseEventKind},
+    crossterm::event::{Event, KeyCode, MouseButton, MouseEvent, MouseEventKind},
     layout::{Constraint, Direction, Layout, Position, Rect},
     style::{Color, Modifier, Style, Stylize},
     symbols,
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Clear, Paragraph},
     Frame
 };
+
+const BUTTONS_HEIGHT: u16 = 3;
 
 pub struct Button {
     pub label: String,
@@ -27,6 +29,12 @@ pub struct SwapButton {
     pub state: bool,
     pub first: Button,
     pub second: Button,
+}
+
+pub struct MenuButton {
+    pub button: Button,
+    pub options: Vec<Button>,
+    pub is_open: bool
 }
 
 impl Button {
@@ -178,6 +186,69 @@ impl SwapButton {
             self.second.render(frame, area);
         } else {
             self.first.render(frame, area);
+        }
+    }
+}
+
+impl MenuButton {
+    pub fn new(label: &str, hotkey: Option<char>, options: Vec<(&str, Option<char>)>) -> Self {
+        let button = Button::new(label, hotkey);
+        let options = options
+            .into_iter()
+            .map(|(label, hotkey)| Button::new(label, hotkey))
+            .collect();
+        Self { button, options, is_open: false }
+    }
+
+    pub fn handle_event(&mut self, event: &Event) -> Option<usize> {
+        if self.is_open {
+            for (i, option) in self.options.iter_mut().enumerate() {
+                if let Some(()) = option.handle_event(event) {
+                    self.is_open = false;
+                    return Some(i);
+                }
+
+                if let Event::Mouse(mouse_event) = event {
+                    if mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
+                        self.is_open = false;
+                        return None;
+                    }
+                } else if event == &Event::Key(KeyCode::Esc.into()) {
+                    self.is_open = false;
+                    return None;
+                }
+            }
+
+        } else if let Some(()) = self.button.handle_event(event) {
+            self.is_open = true;
+        }
+        None
+    }
+
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        self.button.render(frame, area);
+
+        if self.is_open {
+            let menu_height = self.options.len() as u16 * BUTTONS_HEIGHT;
+            let menu_area = Rect {
+                x: area.x,
+                y: area.y - menu_height,
+                width: area.width,
+                height: menu_height,
+            };
+            frame.render_widget(Clear, menu_area);
+
+            let background_block = Block::default().style(Style::default().bg(Color::Black)).borders(Borders::ALL);
+            frame.render_widget(background_block, menu_area); // Yellow background for the popup
+
+            let options_area = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(vec![Constraint::Length(BUTTONS_HEIGHT); self.options.len()])
+                .split(menu_area);
+
+            for (i, option) in self.options.iter_mut().enumerate() {
+                option.render(frame, options_area[i]);
+            }
         }
     }
 }

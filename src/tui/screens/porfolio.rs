@@ -21,28 +21,31 @@ pub struct Screen {
     account: Account,
 
     quit_button: buttons::Button,
-    reveal_button: buttons::SwapButton,
+    manage_button: buttons::MenuButton,
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, account: Account) -> Self {
         let quit_button = buttons::Button::new("Quit", Some('q'));
-        let reveal_button = buttons::SwapButton::new(
-            buttons::Button::new("Reveal", Some('r')).warning(),
-            buttons::Button::new("Hide", Some('h')).primary(),
+        let manage_button = buttons::MenuButton::new(
+            "Manage", Some('m'),
+            vec![("Seed phrase", Some('d')), ("Delete Account", Some('h'))],
         );
 
         Self {
             command_tx,
             account,
             quit_button,
-            reveal_button,
+            manage_button,
         }
     }
 }
 
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+        if let Some(index) = self.manage_button.handle_event(&event) {
+        }
+
         if let Some(()) = self.quit_button.handle_event(&event) {
             self.command_tx.send(AppCommand::Quit).unwrap();
             return Ok(());
@@ -95,6 +98,6 @@ impl AppScreen for Screen {
             .split(content_layout[5]);
 
         self.quit_button.render(frame, buttons_row[0]);
-        self.reveal_button.render(frame, buttons_row[1]);
+        self.manage_button.render(frame, buttons_row[1]);
     }
 }
