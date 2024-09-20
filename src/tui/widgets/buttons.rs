@@ -207,18 +207,17 @@ impl MenuButton {
                     self.is_open = false;
                     return Some(i);
                 }
+            }
 
-                if let Event::Mouse(mouse_event) = event {
-                    if mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
-                        self.is_open = false;
-                        return None;
-                    }
-                } else if event == &Event::Key(KeyCode::Esc.into()) {
+            if let Event::Mouse(mouse_event) = event {
+                if mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
                     self.is_open = false;
                     return None;
                 }
+            } else if event == &Event::Key(KeyCode::Esc.into()) {
+                self.is_open = false;
+                return None;
             }
-
         } else if let Some(()) = self.button.handle_event(event) {
             self.is_open = true;
         }

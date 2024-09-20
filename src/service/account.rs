@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{core::{key_pair::KeyPair, seed_phrase::SeedPhrase}, persistence};
 
 const ROOT_KEYPAIR: &[u8] = b"root_keypair";
@@ -5,9 +7,10 @@ const ROOT_KEYPAIR: &[u8] = b"root_keypair";
 const ERR_ACCOUNT_NOT_FOUND: &str = "Account not found";
 const ERR_WRONG_PASSWORD_PROVIDED: &str = "Wrong password provided";
 
+#[derive(Clone)]
 pub struct Account {
     pub address: web3::types::Address,
-    db: persistence::db::Db
+    db: Arc<persistence::db::Db>
 }
 
 impl Account {
@@ -23,7 +26,7 @@ impl Account {
 
         Ok(Account {
             address,
-            db,
+            db: Arc::new(db),
         })
     }
 
@@ -31,7 +34,7 @@ impl Account {
         let db = persistence::manage::open_database(&db_path()?, address, password)?;
         let account = Account {
             address,
-            db
+            db: Arc::new(db),
         };
 
         if account.get_keypair().is_err() {
@@ -57,6 +60,10 @@ impl Account {
             return Ok(keypair);
         }
         Err(anyhow::anyhow!(ERR_ACCOUNT_NOT_FOUND))
+    }
+
+    pub fn delete(&self) -> anyhow::Result<()> {
+        Self::remove_account(self.address)
     }
 }
 

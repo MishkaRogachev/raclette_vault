@@ -29,7 +29,7 @@ impl Screen {
         let quit_button = buttons::Button::new("Quit", Some('q'));
         let manage_button = buttons::MenuButton::new(
             "Manage", Some('m'),
-            vec![("Seed phrase", Some('d')), ("Delete Account", Some('h'))],
+            vec![("Seed phrase", Some('s')), ("Delete Account", Some('d'))],
         );
 
         Self {
@@ -43,7 +43,22 @@ impl Screen {
 
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+
         if let Some(index) = self.manage_button.handle_event(&event) {
+            match index {
+                // 0 => {
+                //     self.command_tx.send(AppCommand::SwitchScreen(Box::new(
+                //         super::manage_seed_phrase::Screen::new(self.command_tx.clone(), self.account.clone())
+                //     ))).unwrap();
+                // },
+                1 => {
+                    self.command_tx.send(AppCommand::SwitchScreen(Box::new(
+                        super::delete_account::Screen::new(
+                            self.command_tx.clone(), self.account.clone())
+                    ))).unwrap();
+                },
+                _ => {}
+            }
         }
 
         if let Some(()) = self.quit_button.handle_event(&event) {

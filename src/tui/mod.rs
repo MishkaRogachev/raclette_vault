@@ -4,4 +4,3 @@ pub mod app;
 pub mod event;
 mod widgets;
 mod screens;
-
