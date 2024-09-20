@@ -1,5 +1,5 @@
 use ratatui::{
-    crossterm::event::{Event, KeyCode, MouseButton, MouseEvent, MouseEventKind},
+    crossterm::event::{Event, KeyCode, MouseButton, MouseEventKind},
     layout::{Constraint, Direction, Layout, Position, Rect},
     style::{Color, Modifier, Style, Stylize},
     symbols,
@@ -21,7 +21,7 @@ pub struct Button {
 }
 
 pub struct MultiSwitch {
-    pub buttons: Vec<Button>,
+    pub options: Vec<Button>,
     pub active_index: usize,
 }
 
@@ -112,19 +112,18 @@ impl Button {
 }
 
 impl MultiSwitch {
-    pub fn new(buttons: Vec<(&str, Option<char>)>) -> Self {
-        let mut buttons: Vec<_> = buttons
-            .into_iter()
-            .map(|(label, hotkey)| Button::new(label, hotkey))
-            .collect();
-        let active_index = 0;
-        buttons[active_index].active = true;
+    pub fn new(mut options: Vec<Button>) -> Self {
 
-        Self { buttons, active_index }
+        let active_index = 0;
+        if options.len() > 0 {
+            options[active_index].active = true;
+        }
+
+        Self { options, active_index }
     }
 
     pub fn handle_event(&mut self, event: &Event) -> Option<usize> {
-        for (i, button) in self.buttons.iter_mut().enumerate() {
+        for (i, button) in self.options.iter_mut().enumerate() {
             if let Some(()) = button.handle_event(event) {
                 self.set_active(i);
                 return Some(i);
@@ -134,12 +133,12 @@ impl MultiSwitch {
     }
 
     pub fn set_active(&mut self, index: usize) {
-        if index < self.buttons.len() {
-            if let Some(button) = self.buttons.get_mut(self.active_index) {
+        if index < self.options.len() {
+            if let Some(button) = self.options.get_mut(self.active_index) {
                 button.active = false;
             }
 
-            if let Some(button) = self.buttons.get_mut(index) {
+            if let Some(button) = self.options.get_mut(index) {
                 button.active = true;
                 self.active_index = index;
             }
@@ -147,16 +146,16 @@ impl MultiSwitch {
     }
 
     pub fn render(&mut self, frame: &mut Frame, area: Rect) {
-        let button_width = area.width / self.buttons.len() as u16;
+        let button_width = area.width / self.options.len() as u16;
         let buttons_area = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(
-                vec![Constraint::Length(button_width as u16); self.buttons.len()]
+                vec![Constraint::Length(button_width as u16); self.options.len()]
             )
             .margin(0)
             .split(area);
 
-        for (i, button) in self.buttons.iter_mut().enumerate() {
+        for (i, button) in self.options.iter_mut().enumerate() {
             button.render(frame, buttons_area[i]);
         }
     }
@@ -191,12 +190,8 @@ impl SwapButton {
 }
 
 impl MenuButton {
-    pub fn new(label: &str, hotkey: Option<char>, options: Vec<(&str, Option<char>)>) -> Self {
+    pub fn new(label: &str, hotkey: Option<char>, options: Vec<Button>) -> Self {
         let button = Button::new(label, hotkey);
-        let options = options
-            .into_iter()
-            .map(|(label, hotkey)| Button::new(label, hotkey))
-            .collect();
         Self { button, options, is_open: false }
     }
 

@@ -16,6 +16,8 @@ const LOGO_HEIGHT: u16 = 20;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
+const WARNING_TEXT: &str = "Please don't use this wallet for real crypto!";
+
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
 
@@ -97,7 +99,7 @@ impl AppScreen for Screen {
             .alignment(Alignment::Center);
         frame.render_widget(logo, content_layout[1]);
 
-        let warning_text = Paragraph::new("Please don't use this wallet for real crypto!")
+        let warning_text = Paragraph::new(WARNING_TEXT)
             .style(Style::default().fg(Color::Red).bold())
             .alignment(Alignment::Center);
         frame.render_widget(warning_text, content_layout[2]);

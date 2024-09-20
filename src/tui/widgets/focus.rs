@@ -4,7 +4,7 @@ pub trait Focusable {
     fn is_focused(&self) -> bool;
     fn set_focused(&mut self, focused: bool);
     fn contains(&self, column: u16, row: u16) -> bool;
-    fn handle_event(&mut self, event: &Event);
+    fn handle_event(&mut self, event: &Event) -> bool;
 }
 
 pub fn handle_scoped_event(focusables: &mut [&mut dyn Focusable], event: &Event) -> bool {
@@ -61,8 +61,7 @@ pub fn handle_scoped_event(focusables: &mut [&mut dyn Focusable], event: &Event)
 
     // 5. If there is a focused widget, call handle_event on it
     if let Some(index) = focused_index {
-        focusables[index].handle_event(event);
-        return true;
+        return focusables[index].handle_event(event);
     }
     return false;
 }

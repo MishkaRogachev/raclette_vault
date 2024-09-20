@@ -77,21 +77,25 @@ impl Focusable for Input {
         self.area.contains(Position { x: column, y: row })
     }
 
-    fn handle_event(&mut self, event: &Event) {
+    fn handle_event(&mut self, event: &Event) -> bool {
         if self.disabled {
-            return;
+            return false;
         }
 
         if let Event::Key(key_event) = event {
             match key_event.code {
                 KeyCode::Char(c) => {
                     self.value.push(c);
+                    true
                 }
                 KeyCode::Backspace => {
                     self.value.pop();
+                    true
                 }
-                _ => {},
+                _ => false,
             }
+        } else {
+            false
         }
     }
 }

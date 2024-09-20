@@ -15,6 +15,8 @@ const SKULL_HEIGHT: u16 = 20;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
+const WARNING_TEXT: &str = "Are you going to delete your account and root keypair!?";
+
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     account: Account,
@@ -78,7 +80,7 @@ impl AppScreen for Screen {
             .alignment(Alignment::Center);
         frame.render_widget(skull, content_layout[1]);
 
-        let warning_text = Paragraph::new("Are you going to delete your account and root keypair!?")
+        let warning_text = Paragraph::new(WARNING_TEXT)
             .style(Style::default().fg(Color::Red).bold())
             .alignment(Alignment::Center);
         frame.render_widget(warning_text, content_layout[2]);

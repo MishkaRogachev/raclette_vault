@@ -10,7 +10,7 @@ use crate::service::account::Account;
 use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
 
 const HOME_WIDTH: u16 = 60;
-const INTRO_HEIGHT: u16 = 1;
+const INTRO_HEIGHT: u16 = 2;
 const ACCOUNT_HEIGHT: u16 = 3;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
@@ -27,9 +27,15 @@ pub struct Screen {
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, account: Account) -> Self {
         let quit_button = buttons::Button::new("Quit", Some('q'));
+
+        let mut access_mnemonic = buttons::Button::new("Access mnemonic", Some('a'));
+        if account.get_seed_phrase().is_err() {
+            access_mnemonic.disabled = true;
+        }
+        let delete_account = buttons::Button::new("Delete Account", Some('d'));
+
         let manage_button = buttons::MenuButton::new(
-            "Manage", Some('m'),
-            vec![("Access mnemonic", Some('a')), ("Delete Account", Some('d'))],
+            "Manage", Some('m'), vec![access_mnemonic, delete_account]
         );
 
         Self {
@@ -46,11 +52,11 @@ impl AppScreen for Screen {
 
         if let Some(index) = self.manage_button.handle_event(&event) {
             match index {
-                // 0 => {
-                //     self.command_tx.send(AppCommand::SwitchScreen(Box::new(
-                //         super::manage_seed_phrase::Screen::new(self.command_tx.clone(), self.account.clone())
-                //     ))).unwrap();
-                // },
+                0 => {
+                    self.command_tx.send(AppCommand::SwitchScreen(Box::new(
+                        super::mnemonic_access::Screen::new(self.command_tx.clone(), self.account.clone())
+                    ))).unwrap();
+                },
                 1 => {
                     self.command_tx.send(AppCommand::SwitchScreen(Box::new(
                         super::account_delete::Screen::new(

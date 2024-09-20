@@ -5,9 +5,8 @@ use ratatui::{
     style::{Color, Style, Stylize},
     widgets::Paragraph, Frame
 };
-use zeroize::Zeroizing;
 
-use crate::service::account::Account;
+use crate::{core::seed_phrase::SeedPhrase, service::account::Account};
 use crate::tui::{widgets::{focus, buttons, inputs}, app::{AppCommand, AppScreen}};
 
 const HOME_WIDTH: u16 = 60;
@@ -17,46 +16,42 @@ const INPUT_HEIGHT: u16 = 3;
 const ERROR_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
-const MAX_PASSWORD_ATTEMPTS: u8 = 3;
-
-const INTRO_TEXT: &str = "Login into existing account";
-const LABEL_TEXT: &str = "Enter password";
-const INCORRECT_PASSWORD_TEXT: &str = "Incorrect password. Attempts left";
+const INTRO_TEXT: &str = "Confirm removal of the seed phrase";
+const LABEL_TEXT: &str = "Enter word";
+const ERROR_TEXT: &str = "Incorrect word";
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
-    address: web3::types::Address,
-    remaining_attempts: u8,
-    pass_error: Option<String>,
+    account: Account,
+    seed_phrase: SeedPhrase,
+    word_index: usize,
 
     input: inputs::Input,
     back_button: buttons::Button,
     reveal_button: buttons::SwapButton,
-    login_button: buttons::Button,
+    delete_button: buttons::Button,
 }
 
 impl Screen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>, address: web3::types::Address) -> Self {
-        let remaining_attempts = MAX_PASSWORD_ATTEMPTS;
-        let pass_error = None;
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, account: Account, seed_phrase: SeedPhrase) -> Self {
+        let word_index = rand::random::<usize>() % seed_phrase.get_words().len();
 
-        let input = inputs::Input::new("Enter password").masked();
+        let input = inputs::Input::new("Enter word").masked();
         let back_button = buttons::Button::new("Back", Some('b'));
         let reveal_button = buttons::SwapButton::new(
             buttons::Button::new("Reveal", Some('r')).warning(),
             buttons::Button::new("Hide", Some('h')).primary());
-        let mut login_button = buttons::Button::new("Login", Some('l'));
-        login_button.disabled = true;
+        let delete_button = buttons::Button::new("Delete", Some('d')).warning();
 
         Self {
             command_tx,
-            address,
-            remaining_attempts,
-            pass_error,
+            account,
+            seed_phrase,
+            word_index,
             input,
             back_button,
             reveal_button,
-            login_button
+            delete_button
         }
     }
 }
@@ -64,13 +59,22 @@ impl Screen {
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         if focus::handle_scoped_event(&mut [&mut self.input], &event) {
-            self.login_button.disabled = self.input.value.is_empty();
+            if let Some(word) = self.seed_phrase.get_words().get(self.word_index) {
+                let valid = *word == *self.input.value;
+                self.delete_button.disabled = !valid;
+                self.input.color = if valid { Color::Yellow } else { Color::Red };
+            } else {
+                self.delete_button.disabled = true;
+                self.input.color = Color::Red;
+            };
+
             return Ok(());
         }
 
         if let Some(()) = self.back_button.handle_event(&event) {
-            let welcome_screen = Box::new(super::welcome::Screen::new(self.command_tx.clone()));
-            self.command_tx.send(AppCommand::SwitchScreen(welcome_screen)).unwrap();
+            self.command_tx.send(AppCommand::SwitchScreen(Box::new(
+                super::mnemonic_access::Screen::new(self.command_tx.clone(), self.account.clone())
+            ))).unwrap();
             return Ok(());
         }
 
@@ -79,24 +83,14 @@ impl AppScreen for Screen {
             return Ok(());
         }
 
-        if let Some(()) = self.login_button.handle_event(&event) {
-            match Account::login(self.address, &self.input.value) {
-                Ok(account) => {
-                    let porfolio = Box::new(super::porfolio::Screen::new(
-                        self.command_tx.clone(), account));
-                    self.command_tx.send(AppCommand::SwitchScreen(porfolio)).unwrap();
-                },
-                Err(_) => {
-                    if self.remaining_attempts > 1 {
-                        self.remaining_attempts -= 1;
-                        self.pass_error = Some(format!("{}: {}", INCORRECT_PASSWORD_TEXT, self.remaining_attempts));
-                        self.input.value = Zeroizing::new(String::new());
-                    } else {
-                        self.command_tx.send(AppCommand::Quit).unwrap();
-                    }
-                }
-            }
+        if let Some(()) = self.delete_button.handle_event(&event) {
+            self.account.delete_seed_phrase().expect("Failed to delete seed phrase");
+            self.command_tx.send(AppCommand::SwitchScreen(Box::new(
+                super::porfolio::Screen::new(self.command_tx.clone(), self.account.clone())
+            ))).unwrap();
+            return Ok(());
         }
+
         Ok(())
     }
 
@@ -133,15 +127,15 @@ impl AppScreen for Screen {
             .alignment(Alignment::Center);
         frame.render_widget(intro_text, content_layout[1]);
 
-        let label = Paragraph::new(LABEL_TEXT)
+        let label = Paragraph::new(format!("{} #{}", LABEL_TEXT, self.word_index + 1))
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
         frame.render_widget(label, content_layout[3]);
 
         self.input.render(frame, content_layout[4]);
 
-        if let Some(error_string) = &self.pass_error {
-            let error_text = Paragraph::new(error_string.clone())
+        if self.delete_button.disabled && !self.input.value.is_empty() {
+            let error_text = Paragraph::new(ERROR_TEXT)
                 .style(Style::default().fg(Color::Red).bold())
                 .alignment(Alignment::Center);
             frame.render_widget(error_text, content_layout[6]);
@@ -158,6 +152,6 @@ impl AppScreen for Screen {
 
         self.back_button.render(frame, buttons_row[0]);
         self.reveal_button.render(frame, buttons_row[1]);
-        self.login_button.render(frame, buttons_row[2]);
+        self.delete_button.render(frame, buttons_row[2]);
     }
 }
