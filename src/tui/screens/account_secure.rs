@@ -55,7 +55,7 @@ impl AppScreen for Screen {
         focus::handle_scoped_event(&mut [&mut self.first_input, &mut self.second_input], &event);
 
         if let Some(()) = self.back_button.handle_event(&event) {
-            let create_screeen = Box::new(super::create::Screen::new(
+            let create_screeen = Box::new(super::account_create::Screen::new(
                 self.command_tx.clone(), self.seed_phrase.clone()));
             self.command_tx
                 .send(AppCommand::SwitchScreen(create_screeen))

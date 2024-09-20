@@ -1,6 +1,6 @@
 pub mod welcome;
-mod create;
-mod secure;
-mod login;
+mod account_create;
+mod account_secure;
+mod account_login;
 mod porfolio;
-mod delete_account;
+mod account_delete;

@@ -23,7 +23,7 @@ const INTRO_TEXT: &str = "Login into existing account";
 const LABEL_TEXT: &str = "Enter password";
 const INCORRECT_PASSWORD_TEXT: &str = "Incorrect password. Attempts left";
 
-pub struct Screen { 
+pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     address: web3::types::Address,
     remaining_attempts: u8,

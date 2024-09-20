@@ -79,7 +79,7 @@ impl AppScreen for Screen {
         }
 
         if let Some(()) = self.secure_button.handle_event(&event) {
-            let secure_screeen = Box::new(super::secure::Screen::new(
+            let secure_screeen = Box::new(super::account_secure::Screen::new(
                 self.command_tx.clone(),
                 self.seed_phrase.clone(),
             ));

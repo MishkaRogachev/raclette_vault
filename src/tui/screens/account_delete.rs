@@ -42,7 +42,7 @@ impl AppScreen for Screen {
         }
 
         if let Some(()) = self.delete_button.handle_event(&event) {
-            self.account.delete().expect("Failed to delete account");
+            self.account.delete_account().expect("Failed to delete account");
             let welcome_screen = Box::new(super::welcome::Screen::new(
                 self.command_tx.clone()));
             self.command_tx.send(AppCommand::SwitchScreen(welcome_screen)).unwrap();

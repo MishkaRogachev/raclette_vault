@@ -29,7 +29,7 @@ impl Screen {
         let quit_button = buttons::Button::new("Quit", Some('q'));
         let manage_button = buttons::MenuButton::new(
             "Manage", Some('m'),
-            vec![("Seed phrase", Some('s')), ("Delete Account", Some('d'))],
+            vec![("Access mnemonic", Some('a')), ("Delete Account", Some('d'))],
         );
 
         Self {
@@ -53,7 +53,7 @@ impl AppScreen for Screen {
                 // },
                 1 => {
                     self.command_tx.send(AppCommand::SwitchScreen(Box::new(
-                        super::delete_account::Screen::new(
+                        super::account_delete::Screen::new(
                             self.command_tx.clone(), self.account.clone())
                     ))).unwrap();
                 },

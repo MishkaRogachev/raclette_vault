@@ -53,7 +53,7 @@ impl AppScreen for Screen {
 
         if let Some((login_button, account)) = &mut self.login_button {
             if let Some(()) = login_button.handle_event(&event) {
-                let login_screen = Box::new(super::login::Screen::new(self.command_tx.clone(), account.clone()));
+                let login_screen = Box::new(super::account_login::Screen::new(self.command_tx.clone(), account.clone()));
                 self.command_tx.send(AppCommand::SwitchScreen(login_screen))
                     .map_err(|e| anyhow::anyhow!(format!("Failed to send command: {}", e)))?;
                 return Ok(());
@@ -62,7 +62,7 @@ impl AppScreen for Screen {
 
         if let Some(()) = self.create_button.handle_event(&event) {
             let seed_phrase = SeedPhrase::generate(bip39::MnemonicType::Words12);
-            let create_screen = Box::new(super::create::Screen::new(
+            let create_screen = Box::new(super::account_create::Screen::new(
                 self.command_tx.clone(), seed_phrase));
             self.command_tx.send(AppCommand::SwitchScreen(create_screen)).unwrap();
             return Ok(());
