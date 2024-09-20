@@ -3,7 +3,9 @@ use std::sync::Arc;
 use crate::{core::{key_pair::KeyPair, seed_phrase::SeedPhrase}, persistence};
 
 const ROOT_KEYPAIR: &[u8] = b"root_keypair";
+const ROOT_SEED_PHRASE: &[u8] = b"root_seed_phrase";
 
+const ERR_SEED_PHRASE_NOT_FOUND: &str = "Seed phrase not found";
 const ERR_ACCOUNT_NOT_FOUND: &str = "Account not found";
 const ERR_WRONG_PASSWORD_PROVIDED: &str = "Wrong password provided";
 
@@ -21,6 +23,11 @@ impl Account {
 
         let address = keypair.get_address();
         let db = persistence::manage::open_database(&db_path()?, address, password)?;
+
+        let words = seed_phrase.get_words();
+        let serialized_seed_phrase = serde_json::to_vec(&words)?;
+        db.insert(ROOT_SEED_PHRASE, &serialized_seed_phrase)?;
+
         let serialized_keypair = serde_json::to_vec(&keypair)?;
         db.insert(ROOT_KEYPAIR, &serialized_keypair)?;
 
@@ -52,6 +59,15 @@ impl Account {
         persistence::manage::remove_database(&db_path()?, address)
     }
 
+    pub fn get_seed_phrase(&self) -> anyhow::Result<SeedPhrase> {
+        let serialized_seed_phrase: Option<Vec<u8>> = self.db.get(ROOT_SEED_PHRASE)?;
+        if let Some(serialized_seed_phrase) = serialized_seed_phrase {
+            let words: Vec<String> = serde_json::from_slice(&serialized_seed_phrase)?;
+            return SeedPhrase::from_words(words);
+        }
+        Err(anyhow::anyhow!(ERR_SEED_PHRASE_NOT_FOUND))
+    }
+
     pub fn get_keypair(&self) -> anyhow::Result<KeyPair> {
         let serialized_keypair: Option<Vec<u8>> = self.db.get(ROOT_KEYPAIR)?;
         if let Some(serialized_keypair) = serialized_keypair {
@@ -62,7 +78,14 @@ impl Account {
         Err(anyhow::anyhow!(ERR_ACCOUNT_NOT_FOUND))
     }
 
-    pub fn delete(&self) -> anyhow::Result<()> {
+    pub fn delete_seed_phrase(&self) -> anyhow::Result<()> {
+        match self.db.remove(ROOT_SEED_PHRASE) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(anyhow::anyhow!(ERR_SEED_PHRASE_NOT_FOUND))
+        }
+    }
+
+    pub fn delete_account(&self) -> anyhow::Result<()> {
         Self::remove_account(self.address)
     }
 }

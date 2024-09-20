@@ -30,7 +30,19 @@ mod tests {
         let accounts = Account::list_accounts()?;
         assert!(accounts.contains(&address));
 
-        Account::remove_account(address)?;
+        // Access seed phrase
+        let seed_phrase_back = account.get_seed_phrase()?;
+        assert_eq!(seed_phrase, seed_phrase_back);
+
+        // Delete seed phrase
+        account.delete_seed_phrase()?;
+        assert!(account.get_seed_phrase().is_err());
+
+        // Remove account
+        account.delete_account()?;
+
+        let accounts = Account::list_accounts()?;
+        assert!(!accounts.contains(&address));
 
         Ok(())
     }
