@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use test_case::test_matrix;
+    use test_case::{test_matrix, test_case};
     use bip39::MnemonicType;
     use crate::core::{key_pair::KeyPair, seed_phrase::SeedPhrase};
     use super::super::account::Account;
@@ -43,6 +43,25 @@ mod tests {
 
         let accounts = Account::list_accounts()?;
         assert!(!accounts.contains(&address));
+
+        Ok(())
+    }
+
+    #[test_case(bip39::MnemonicType::Words12)]
+    #[test_case(bip39::MnemonicType::Words24)]
+    fn test_restore_from_seed_phrase(mtype: bip39::MnemonicType) -> anyhow::Result<()> {
+        let seed_phrase = SeedPhrase::generate(mtype);
+        let keypair = KeyPair::from_seed(seed_phrase.to_seed(""))?;
+        keypair.validate()?;
+
+        let address = {
+            let account = Account::create(&seed_phrase, "")?;
+            account.address
+        };
+
+        let seed_phrase_back = SeedPhrase::from_words(seed_phrase.get_words())?;
+        let account = Account::create(&seed_phrase_back, "")?;
+        assert_eq!(account.address, address);
 
         Ok(())
     }

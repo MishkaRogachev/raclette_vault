@@ -60,6 +60,11 @@ impl Button {
         self
     }
 
+    pub fn disable(mut self) -> Self {
+        self.disabled = true;
+        self
+    }
+
     pub fn handle_event(&mut self, event: &Event) -> Option<()> {
         if self.disabled {
             return None;
@@ -88,20 +93,23 @@ impl Button {
     pub fn render(&mut self, frame: &mut Frame, area: Rect) {
         self.area = area; // Store the button's area for mouse handling
 
-        let style = Style::default().fg(self.color).add_modifier(Modifier::BOLD);
-        let block = Block::default().borders(Borders::ALL).border_style(style);
+        let mut style = Style::default().fg(self.color).add_modifier(Modifier::BOLD);
+        let mut block = Block::default().borders(Borders::ALL).border_style(style);
 
-        let block = if self.disabled {
-            block.dim()
-        } else { 
-            if self.active { block } else { block } // FIXME: active look
-        };
+        if self.disabled {
+            block = block.dim();
+        }
 
-        let (block, style) = if !self.disabled && self.is_hovered {
-            ( block.border_set(symbols::border::DOUBLE), style.bg(self.color).fg(Color::Black))
-        } else {
-            (block, style)
-        };
+        if !self.disabled && self.is_hovered {
+            block = block.border_set(symbols::border::DOUBLE);
+            style = style.bg(self.color).fg(Color::Black);
+        }
+
+        // active overrides hovered
+        if self.active {
+            block = block.borders(Borders::ALL)
+                .border_set(symbols::border::THICK);
+        }
 
         let label_line = render_label_with_hotkey(&self.label, self.hotkey, style);
         let paragraph = Paragraph::new(label_line)
@@ -170,11 +178,15 @@ impl SwapButton {
         }
     }
 
+    pub fn swap(&mut self) -> bool {
+        self.state = !self.state;
+        self.state
+    }
+
     pub fn handle_event(&mut self, event: &Event) -> Option<bool> {
         let button = if self.state { &mut self.second } else { &mut self.first };
         if let Some(()) = button.handle_event(event) {
-            self.state = !self.state;
-            Some(self.state)
+            Some(self.swap())
         } else {
             None
         }
@@ -233,7 +245,7 @@ impl MenuButton {
             frame.render_widget(Clear, menu_area);
 
             let background_block = Block::default().style(Style::default().bg(Color::Black)).borders(Borders::ALL);
-            frame.render_widget(background_block, menu_area); // Yellow background for the popup
+            frame.render_widget(background_block, menu_area);
 
             let options_area = Layout::default()
                 .direction(Direction::Vertical)

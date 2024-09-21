@@ -10,7 +10,7 @@ use zeroize::Zeroizing;
 use crate::service::account::Account;
 use crate::tui::{widgets::{focus, buttons, inputs}, app::{AppCommand, AppScreen}};
 
-const HOME_WIDTH: u16 = 60;
+const LOGIN_WIDTH: u16 = 60;
 const INTRO_HEIGHT: u16 = 1;
 const INPUT_LABEL_HEIGHT: u16 = 1;
 const INPUT_HEIGHT: u16 = 3;
@@ -45,8 +45,7 @@ impl Screen {
         let reveal_button = buttons::SwapButton::new(
             buttons::Button::new("Reveal", Some('r')).warning(),
             buttons::Button::new("Hide", Some('h')).primary());
-        let mut login_button = buttons::Button::new("Login", Some('l'));
-        login_button.disabled = true;
+        let login_button = buttons::Button::new("Login", Some('l')).disable();
 
         Self {
             command_tx,
@@ -103,12 +102,12 @@ impl AppScreen for Screen {
     fn render(&mut self, frame: &mut Frame) {
         let area = frame.area();
 
-        let horizontal_padding = (area.width.saturating_sub(HOME_WIDTH)) / 2;
+        let horizontal_padding = (area.width.saturating_sub(LOGIN_WIDTH)) / 2;
 
         let centered_area = Rect {
             x: horizontal_padding,
             y: area.y,
-            width: HOME_WIDTH,
+            width: LOGIN_WIDTH,
             height: area.height,
         };
 

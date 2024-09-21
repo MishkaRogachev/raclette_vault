@@ -18,31 +18,39 @@ const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const WARNING_TEXT: &str = "Please don't use this wallet for real crypto!";
 
+enum ProcessActions {
+    Login { login_button: buttons::Button, account: H160 },
+    Create { import_button: buttons::Button, create_button: buttons::Button }
+}
+
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
 
     quit_button: buttons::Button,
-    login_button: Option<(buttons::Button, H160)>,
-    create_button: buttons::Button,
+    process_actions: ProcessActions
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
         let quit_button = buttons::Button::new("Quit", Some('q'));
-        let login_button = {
+        let process_actions = {
             let accounts = Account::list_accounts().expect("Failed to list accounts");
             match accounts.len() {
-                0 => None,
+                0 => {
+                    let import_button = buttons::Button::new("Import Mnemonic", Some('i'));
+                    let create_button = buttons::Button::new("Create Account", Some('c'));
+                    ProcessActions::Create { create_button, import_button }
+                },
                 1 => {
                     let account = accounts.first().unwrap().clone();
-                    Some((buttons::Button::new("Login", Some('l')), account))
+                    let login_button = buttons::Button::new("Login", Some('l'));
+                    ProcessActions::Login { login_button, account }
                 },
                 _ => panic!("Multiple accounts are not supported yet")
             }
         };
-        let create_button = buttons::Button::new("Create Master Account", Some('c'));
 
-        Self { command_tx, quit_button, login_button, create_button }
+        Self { command_tx, quit_button,process_actions }
     }
 }
 
@@ -53,21 +61,27 @@ impl AppScreen for Screen {
             return Ok(());
         }
 
-        if let Some((login_button, account)) = &mut self.login_button {
-            if let Some(()) = login_button.handle_event(&event) {
-                let login_screen = Box::new(super::account_login::Screen::new(self.command_tx.clone(), account.clone()));
-                self.command_tx.send(AppCommand::SwitchScreen(login_screen))
-                    .map_err(|e| anyhow::anyhow!(format!("Failed to send command: {}", e)))?;
-                return Ok(());
+        match &mut self.process_actions {
+            ProcessActions::Login { login_button, account } => {
+                if let Some(()) = login_button.handle_event(&event) {
+                    let login_screen = Box::new(super::account_login::Screen::new(self.command_tx.clone(), account.clone()));
+                    self.command_tx.send(AppCommand::SwitchScreen(login_screen)).unwrap();
+                    return Ok(());
+                }
+            },
+            ProcessActions::Create { import_button, create_button } => {
+                if let Some(()) = import_button.handle_event(&event) {
+                    let import_screen = Box::new(super::account_import_start::Screen::new(self.command_tx.clone()));
+                    self.command_tx.send(AppCommand::SwitchScreen(import_screen)).unwrap();
+                    return Ok(());
+                }
+                if let Some(()) = create_button.handle_event(&event) {
+                    let seed_phrase = SeedPhrase::generate(bip39::MnemonicType::Words12);
+                    let create_screen = Box::new(super::account_create::Screen::new(self.command_tx.clone(), seed_phrase));
+                    self.command_tx.send(AppCommand::SwitchScreen(create_screen)).unwrap();
+                    return Ok(());
+                }
             }
-        }
-
-        if let Some(()) = self.create_button.handle_event(&event) {
-            let seed_phrase = SeedPhrase::generate(bip39::MnemonicType::Words12);
-            let create_screen = Box::new(super::account_create::Screen::new(
-                self.command_tx.clone(), seed_phrase));
-            self.command_tx.send(AppCommand::SwitchScreen(create_screen)).unwrap();
-            return Ok(());
         }
         Ok(())
     }
@@ -104,20 +118,33 @@ impl AppScreen for Screen {
             .alignment(Alignment::Center);
         frame.render_widget(warning_text, content_layout[2]);
 
-        let buttons_row = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(30),
-                Constraint::Percentage(70),
-            ])
-            .split(content_layout[3]);
+        match &mut self.process_actions {
+            ProcessActions::Login { login_button, .. } => {
+                let buttons_row = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Percentage(30),
+                    Constraint::Percentage(70),
+                ])
+                .split(content_layout[3]);
 
-        self.quit_button.render(frame, buttons_row[0]);
-
-        if let Some((login_button, _)) = &mut self.login_button {
-            login_button.render(frame, buttons_row[1]);
-        } else {
-            self.create_button.render(frame, buttons_row[1]);
+                self.quit_button.render(frame, buttons_row[0]);
+                login_button.render(frame, buttons_row[1]);
+            },
+            ProcessActions::Create { import_button, create_button } => {
+                let buttons_row = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Percentage(30),
+                    Constraint::Percentage(35),
+                    Constraint::Percentage(35),
+                ])
+                .split(content_layout[3]);
+                
+                self.quit_button.render(frame, buttons_row[0]);
+                import_button.render(frame, buttons_row[1]);
+                create_button.render(frame, buttons_row[2]);
+            }
         }
     }
 }

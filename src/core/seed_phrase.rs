@@ -31,6 +31,14 @@ impl SeedPhrase {
     pub fn get_words(&self) -> Vec<String> {
         self.mnemonic.to_string().split(' ').map(|s| s.to_string()).collect()
     }
+
+    pub fn get_mnemonic_type(&self) -> MnemonicType {
+        match self.mnemonic.to_string().split(' ').count() {
+            12 => MnemonicType::Words12,
+            24 => MnemonicType::Words24,
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl PartialEq for SeedPhrase {

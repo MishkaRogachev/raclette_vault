@@ -9,7 +9,7 @@ use ratatui::{
 use crate::service::account::Account;
 use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
 
-const HOME_WIDTH: u16 = 60;
+const PORFOLIO_WIDTH: u16 = 60;
 const INTRO_HEIGHT: u16 = 2;
 const ACCOUNT_HEIGHT: u16 = 3;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
@@ -77,12 +77,12 @@ impl AppScreen for Screen {
 
     fn render(&mut self, frame: &mut Frame) {
         let area = frame.area();
-        let horizontal_padding = (area.width.saturating_sub(HOME_WIDTH)) / 2;
+        let horizontal_padding = (area.width.saturating_sub(PORFOLIO_WIDTH)) / 2;
 
         let centered_area = Rect {
             x: horizontal_padding,
             y: area.y,
-            width: HOME_WIDTH,
+            width: PORFOLIO_WIDTH,
             height: area.height,
         };
 
