@@ -8,7 +8,6 @@ use ratatui::{
 };
 use zeroize::Zeroizing;
 
-use crate::core::seed_phrase::SeedPhrase;
 use crate::tui::{app::{AppCommand, AppScreen}, widgets::{bars, buttons, focus, inputs}};
 
 const IMPORT_WIDTH: u16 = 60;
@@ -103,26 +102,14 @@ impl AppScreen for Screen {
                 words.push(Zeroizing::new(self.input.value.to_string()));
             }
 
-            if words.len() == self.mtype.word_count() {
-                let seed_phrase = SeedPhrase::from_words(
-                    words.iter().map(|w| w.to_string()).collect());
-                match seed_phrase {
-                    Ok(seed_phrase) => {
-                        let finalize_screen = Box::new(super::account_import_finalize::Screen::new(
-                            self.command_tx.clone(), seed_phrase));
-                        self.command_tx.send(AppCommand::SwitchScreen(finalize_screen)).unwrap();
-                    },
-                    Err(_) => {
-                        let welcome_screen = Box::new(super::welcome::Screen::new(self.command_tx.clone()));
-                        self.command_tx.send(AppCommand::SwitchScreen(welcome_screen)).unwrap();
-                    },
-                }
-            } else if words.len() < self.mtype.word_count() {
+            if self.index + 1 == self.mtype.word_count() {
+                let finalize_screen = Box::new(super::account_import_finalize::Screen::new(
+                    self.command_tx.clone(), words));
+                self.command_tx.send(AppCommand::SwitchScreen(finalize_screen)).unwrap();
+            } else {
                 let import_screen = Box::new(super::account_import_words::Screen::new(
                     self.command_tx.clone(), self.mtype, words, self.index + 1, revealed));
                 self.command_tx.send(AppCommand::SwitchScreen(import_screen)).unwrap();
-            } else {
-                unreachable!();
             }
         }
         Ok(())
@@ -143,7 +130,6 @@ impl AppScreen for Screen {
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(PROGRESS_HEIGHT),
@@ -152,23 +138,22 @@ impl AppScreen for Screen {
                 Constraint::Length(INPUT_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
-                Constraint::Min(0), // Fill height
             ])
             .split(centered_area);
 
         let intro_text = Paragraph::new(INTRO_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
-        frame.render_widget(intro_text, content_layout[1]);
+        frame.render_widget(intro_text, content_layout[0]);
 
-        self.bar.render(frame, content_layout[3]);
+        self.bar.render(frame, content_layout[2]);
 
         let label = Paragraph::new(LABEL_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
-        frame.render_widget(label, content_layout[5]);
+        frame.render_widget(label, content_layout[4]);
 
-        self.input.render(frame, content_layout[6]);
+        self.input.render(frame, content_layout[5]);
 
         let buttons_row = Layout::default()
             .direction(Direction::Horizontal)
@@ -177,7 +162,7 @@ impl AppScreen for Screen {
                 Constraint::Percentage(30),
                 Constraint::Percentage(40),
             ])
-            .split(content_layout[8]);
+            .split(content_layout[7]);
 
         self.back_button.render(frame, buttons_row[0]);
         self.reveal_button.render(frame, buttons_row[1]);

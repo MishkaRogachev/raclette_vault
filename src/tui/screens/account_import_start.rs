@@ -91,13 +91,10 @@ impl AppScreen for Screen {
             .constraints([
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
-                Constraint::Min(0), // Fill height
                 Constraint::Length(SWITCH_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(OUTRO_HEIGHT),
-                Constraint::Min(0), // Fill height
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
-                Constraint::Min(0), // Fill height
             ])
             .split(centered_area);
 
@@ -106,12 +103,12 @@ impl AppScreen for Screen {
             .alignment(Alignment::Center);
         frame.render_widget(intro_text, content_layout[1]);
 
-        self.word_cnt_switch.render(frame, content_layout[3]);
+        self.word_cnt_switch.render(frame, content_layout[2]);
 
         let outro_text = Paragraph::new(OUTRO_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
-        frame.render_widget(outro_text, content_layout[5]);
+        frame.render_widget(outro_text, content_layout[4]);
 
         let buttons_row = Layout::default()
             .direction(Direction::Horizontal)
@@ -119,7 +116,7 @@ impl AppScreen for Screen {
                 Constraint::Percentage(50),
                 Constraint::Percentage(50),
             ])
-            .split(content_layout[7]);
+            .split(content_layout[5]);
 
         self.back_button.render(frame, buttons_row[0]);
         self.continue_button.render(frame, buttons_row[1]);

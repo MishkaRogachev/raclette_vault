@@ -4,18 +4,20 @@ use ratatui::{
     text::Text, widgets::Paragraph,
     Frame
 };
+use zeroize::Zeroizing;
 
 const MASKED_PLACEHOLDER: &str = "******";
 pub const MNEMONIC_HEIGHT: u16 = 30;
 
 pub struct MnemonicWords {
-    pub words: Vec<String>,
+    pub words: Vec<Zeroizing<String>>,
     pub masked: bool,
+    pub color: Color,
 }
 
 impl MnemonicWords {
-    pub fn new(words: Vec<String>) -> Self {
-        Self { words, masked: true }
+    pub fn new(words: Vec<Zeroizing<String>>) -> Self {
+        Self { words, masked: true, color: Color::Yellow }
     }
 
     pub fn render(&mut self, frame: &mut Frame, area: Rect) {
@@ -59,15 +61,15 @@ impl MnemonicWords {
                 } else {
                     &words_in_column[i]
                 };
-                frame.render_widget(render_centered_word(word, start_idx + i), *word_area);
+                frame.render_widget(render_centered_word(word, start_idx + i, self.color), *word_area);
             }
         }
     }
 }
 
-fn render_centered_word(word: &str, i: usize) -> Paragraph<'_> {
+fn render_centered_word(word: &str, i: usize, color: Color) -> Paragraph<'_> {
     let word = format!("{}) {}", i + 1, word);
     Paragraph::new(Text::raw(word))
         .alignment(ratatui::layout::Alignment::Left)
-        .style(Style::default().fg(Color::Yellow))
+        .style(Style::default().fg(color))
 }

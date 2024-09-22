@@ -1,4 +1,5 @@
 use bip39::{Language, Mnemonic, MnemonicType, Seed};
+use zeroize::Zeroizing;
 
 #[derive(Debug, Clone)]
 pub struct SeedPhrase {
@@ -32,12 +33,8 @@ impl SeedPhrase {
         self.mnemonic.to_string().split(' ').map(|s| s.to_string()).collect()
     }
 
-    pub fn get_mnemonic_type(&self) -> MnemonicType {
-        match self.mnemonic.to_string().split(' ').count() {
-            12 => MnemonicType::Words12,
-            24 => MnemonicType::Words24,
-            _ => unreachable!(),
-        }
+    pub fn get_words_zeroizing(&self) -> Vec<Zeroizing<String>> {
+        self.get_words().iter().map(|w| Zeroizing::new(w.clone())).collect()
     }
 }
 

@@ -6,6 +6,7 @@ use ratatui::{
     widgets::Paragraph,
     Frame,
 };
+use zeroize::Zeroizing;
 
 use crate::{core::seed_phrase::SeedPhrase, service::account::Account};
 use crate::tui::app::{AppCommand, AppScreen};
@@ -31,7 +32,8 @@ pub struct Screen {
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, account: Account) -> Self {
         let seed_phrase = account.get_seed_phrase().unwrap();
-        let mnemonic_words = mnemonic::MnemonicWords::new(seed_phrase.get_words());
+
+        let mnemonic_words = mnemonic::MnemonicWords::new(seed_phrase.get_words_zeroizing());
         let back_button = buttons::Button::new("Back", Some('b'));
         let reveal_button = buttons::SwapButton::new(
             buttons::Button::new("Reveal", Some('r')).warning(),

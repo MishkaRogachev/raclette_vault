@@ -12,16 +12,16 @@ use crate::core::seed_phrase::SeedPhrase;
 use crate::tui::app::{AppCommand, AppScreen};
 use crate::tui::widgets::{buttons, mnemonic};
 
-const IMPORT_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 2;
-const SWITCH_HEIGHT: u16 = 3;
+const IMPORT_WIDTH: u16 = 80;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
-const INTRO_TEXT: &str = "Your master account will be based on the mnemonic seed phrase. \nYou may access it later in the app. Handle it with care!";
+const VALID_SEED_PHRASE: &str = "Your seed phrase was sucesfully imported! You may access it later in the app.";
+const INVALID_SEED_PHRASE: &str = "Your seed phrase is incorrect!";
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
-    seed_phrase: SeedPhrase,
+    seed_phrase: Option<SeedPhrase>,
 
     mnemonic_words: mnemonic::MnemonicWords,
     back_button: buttons::Button,
@@ -30,14 +30,24 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>, seed_phrase: SeedPhrase) -> Self {
-        let mnemonic_words = mnemonic::MnemonicWords::new(seed_phrase.get_words());
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, words: Vec<Zeroizing<String>>) -> Self {
+        let seed_phrase = match SeedPhrase::from_words(words.iter().map(
+            |w| w.to_string()).collect()) {
+            Ok(seed_phrase) => Some(seed_phrase),
+            Err(_) => None,
+        };
+
+        let mut mnemonic_words = mnemonic::MnemonicWords::new(words);
         let back_button = buttons::Button::new("Back", Some('b'));
         let reveal_button = buttons::SwapButton::new(
             buttons::Button::new("Reveal", Some('r')).warning(),
             buttons::Button::new("Hide", Some('h')).primary(),
         );
-        let secure_button = buttons::Button::new("Secure", Some('s'));
+        let mut secure_button = buttons::Button::new("Secure", Some('s'));
+        if seed_phrase.is_none() {
+            secure_button.disabled = true;
+            mnemonic_words.color = Color::Red;
+        }
 
         Self {
             command_tx,
@@ -53,9 +63,12 @@ impl Screen {
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         if let Some(()) = self.back_button.handle_event(&event) {
-            let mtype = self.seed_phrase.get_mnemonic_type();
-            let words: Vec<Zeroizing<String>> = self.seed_phrase.get_words().iter()
-                .map(|w| Zeroizing::new(w.to_string())).collect();
+            let words = self.mnemonic_words.words.clone();
+            let mtype = match words.len() {
+                12 => bip39::MnemonicType::Words12,
+                24 => bip39::MnemonicType::Words24,
+                _ => unreachable!(),
+            };
             let index = words.len() - 1;
             let import_screen = Box::new(super::account_import_words::Screen::new(
                 self.command_tx.clone(), mtype, words, index, false));
@@ -69,14 +82,14 @@ impl AppScreen for Screen {
         }
 
         if let Some(()) = self.secure_button.handle_event(&event) {
-            let secure_screeen = Box::new(super::account_secure::Screen::new(
-                self.command_tx.clone(),
-                self.seed_phrase.clone(),
-            ));
-            self.command_tx
-                .send(AppCommand::SwitchScreen(secure_screeen))
-                .unwrap();
-            return Ok(());
+            if let Some(seed_phrase) = &self.seed_phrase {
+                let secure_screeen = Box::new(super::account_secure::Screen::new(
+                    self.command_tx.clone(), seed_phrase.clone()));
+                self.command_tx
+                    .send(AppCommand::SwitchScreen(secure_screeen))
+                    .unwrap();
+                return Ok(());
+            }
         }
         Ok(())
     }
@@ -95,21 +108,25 @@ impl AppScreen for Screen {
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
-                Constraint::Min(0), // Fill height
                 Constraint::Length(mnemonic::MNEMONIC_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
-                Constraint::Min(0), // Fill height
             ])
             .split(centered_area);
 
-        let intro_text = Paragraph::new(INTRO_TEXT)
-            .style(Style::default().fg(Color::Yellow).bold())
-            .alignment(Alignment::Center);
-        frame.render_widget(intro_text, content_layout[1]);
+            if self.seed_phrase.is_some() {
+                let outro_text = Paragraph::new(VALID_SEED_PHRASE)
+                    .style(Style::default().fg(Color::Yellow).bold())
+                    .alignment(Alignment::Center);
+                frame.render_widget(outro_text, content_layout[0]);
+            } else {
+                let outro_text = Paragraph::new(INVALID_SEED_PHRASE)
+                    .style(Style::default().fg(Color::Red).bold())
+                    .alignment(Alignment::Center);
+                frame.render_widget(outro_text, content_layout[0]);
+            }
 
-        self.mnemonic_words.render(frame, content_layout[3]);
+        self.mnemonic_words.render(frame, content_layout[1]);
 
         let buttons_row = Layout::default()
             .direction(Direction::Horizontal)
@@ -118,7 +135,7 @@ impl AppScreen for Screen {
                 Constraint::Percentage(30),
                 Constraint::Percentage(40),
             ])
-            .split(content_layout[4]);
+            .split(content_layout[2]);
 
         self.back_button.render(frame, buttons_row[0]);
         self.reveal_button.render(frame, buttons_row[1]);

@@ -12,11 +12,11 @@ use crate::tui::app::{AppCommand, AppScreen};
 use crate::tui::widgets::{buttons, mnemonic};
 
 const GENERATE_WIDTH: u16 = 80;
-const INTRO_HEIGHT: u16 = 2;
+const INTRO_HEIGHT: u16 = 1;
 const SWITCH_HEIGHT: u16 = 3;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
-const INTRO_TEXT: &str = "Your master account will be based on the mnemonic seed phrase. \nYou may access it later in the app. Handle it with care!";
+const INTRO_TEXT: &str = "This is your mnemonic seed phrase. You may access it later in the app.";
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
@@ -33,7 +33,7 @@ impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, seed_phrase: SeedPhrase) -> Self {
         let word_cnt_switch = buttons::MultiSwitch::new(vec![
                 buttons::Button::new("12 words", Some('1')), buttons::Button::new("24 words", Some('2'))]);
-        let mnemonic_words = mnemonic::MnemonicWords::new(seed_phrase.get_words());
+        let mnemonic_words = mnemonic::MnemonicWords::new(seed_phrase.get_words_zeroizing());
         let back_button = buttons::Button::new("Back", Some('b'));
         let reveal_button = buttons::SwapButton::new(
             buttons::Button::new("Reveal", Some('r')).warning(),
@@ -61,7 +61,7 @@ impl AppScreen for Screen {
             } else {
                 bip39::MnemonicType::Words12
             });
-            self.mnemonic_words.words = self.seed_phrase.get_words();
+            self.mnemonic_words.words = self.seed_phrase.get_words_zeroizing();
             return Ok(());
         }
 
@@ -105,22 +105,20 @@ impl AppScreen for Screen {
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Length(SWITCH_HEIGHT),
                 Constraint::Length(mnemonic::MNEMONIC_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
-                Constraint::Min(0), // Fill height
             ])
             .split(centered_area);
 
         let intro_text = Paragraph::new(INTRO_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
-        frame.render_widget(intro_text, content_layout[1]);
+        frame.render_widget(intro_text, content_layout[0]);
 
-        self.word_cnt_switch.render(frame, content_layout[2]);
-        self.mnemonic_words.render(frame, content_layout[3]);
+        self.word_cnt_switch.render(frame, content_layout[1]);
+        self.mnemonic_words.render(frame, content_layout[2]);
 
         let buttons_row = Layout::default()
             .direction(Direction::Horizontal)
@@ -129,7 +127,7 @@ impl AppScreen for Screen {
                 Constraint::Percentage(30),
                 Constraint::Percentage(40),
             ])
-            .split(content_layout[4]);
+            .split(content_layout[3]);
 
         self.back_button.render(frame, buttons_row[0]);
         self.reveal_button.render(frame, buttons_row[1]);
