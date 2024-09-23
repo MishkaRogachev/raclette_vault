@@ -6,7 +6,6 @@ use ratatui::{
     widgets::Paragraph,
     Frame,
 };
-use zeroize::Zeroizing;
 
 use crate::{core::seed_phrase::SeedPhrase, service::account::Account};
 use crate::tui::app::{AppCommand, AppScreen};

@@ -1,3 +1,4 @@
+use aes_gcm::Key;
 use zeroize::Zeroizing;
 use ratatui::{
     crossterm::event::{Event, KeyCode},
@@ -8,7 +9,7 @@ use ratatui::{
     Frame
 };
 
-use super::focus::Focusable;
+use super::focus::{Focusable, FocusableEvent};
 
 pub struct Input {
     pub value: Zeroizing<String>,
@@ -77,25 +78,26 @@ impl Focusable for Input {
         self.area.contains(Position { x: column, y: row })
     }
 
-    fn handle_event(&mut self, event: &Event) -> bool {
+    fn handle_event(&mut self, event: &Event) -> Option<FocusableEvent> {
         if self.disabled {
-            return false;
+            return None;
         }
 
         if let Event::Key(key_event) = event {
             match key_event.code {
                 KeyCode::Char(c) => {
                     self.value.push(c);
-                    true
+                    Some(FocusableEvent::Input(self.value.to_string()))
                 }
                 KeyCode::Backspace => {
                     self.value.pop();
-                    true
+                    Some(FocusableEvent::Input(self.value.to_string()))
                 }
-                _ => false,
+                KeyCode::Enter => Some(FocusableEvent::Enter),
+                _ => None,
             }
         } else {
-            false
+            None
         }
     }
 }

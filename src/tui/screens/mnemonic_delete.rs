@@ -7,9 +7,9 @@ use ratatui::{
 };
 
 use crate::{core::seed_phrase::SeedPhrase, service::account::Account};
-use crate::tui::{widgets::{focus, buttons, inputs}, app::{AppCommand, AppScreen}};
+use crate::tui::{widgets::{focus::{self, Focusable}, buttons, inputs}, app::{AppCommand, AppScreen}};
 
-const DELETE_MNEMONIC_WIDTH: u16 = 60;
+const DELETE_MNEMONIC_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
 const INPUT_LABEL_HEIGHT: u16 = 1;
 const INPUT_HEIGHT: u16 = 3;
@@ -36,12 +36,15 @@ impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, account: Account, seed_phrase: SeedPhrase) -> Self {
         let word_index = rand::random::<usize>() % seed_phrase.get_words().len();
 
-        let input = inputs::Input::new("Enter word").masked();
+        let mut input = inputs::Input::new("Enter word").masked();
         let back_button = buttons::Button::new("Back", Some('b'));
         let reveal_button = buttons::SwapButton::new(
             buttons::Button::new("Reveal", Some('r')).warning(),
             buttons::Button::new("Hide", Some('h')).primary());
         let delete_button = buttons::Button::new("Delete", Some('d')).warning().disable();
+
+        input.set_focused(true);
+        input.color = Color::Red;
 
         Self {
             command_tx,
@@ -58,15 +61,35 @@ impl Screen {
 
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
-        if focus::handle_scoped_event(&mut [&mut self.input], &event) {
-            if let Some(word) = self.seed_phrase.get_words().get(self.word_index) {
-                let valid = *word == *self.input.value;
-                self.delete_button.disabled = !valid;
-                self.input.color = if valid { Color::Yellow } else { Color::Red };
-            } else {
-                self.delete_button.disabled = true;
-                self.input.color = Color::Red;
-            };
+        let scoped_event = focus::handle_scoped_event(&mut [&mut self.input], &event);
+
+        let valid = if let Some(word) = self.seed_phrase.get_words().get(self.word_index) {
+            let valid = *word == *self.input.value;
+            self.delete_button.disabled = !valid;
+            self.input.color = if valid { Color::Yellow } else { Color::Red };
+            valid
+        } else {
+            self.delete_button.disabled = true;
+            self.input.color = Color::Red;
+            false
+        };
+
+        let delete_action = || {
+            if !valid {
+                return;
+            }
+            self.account.delete_seed_phrase().expect("Failed to delete seed phrase");
+            self.command_tx.send(AppCommand::SwitchScreen(Box::new(
+                super::porfolio::Screen::new(self.command_tx.clone(), self.account.clone())
+            ))).unwrap();
+        };
+        if let Some(event) = scoped_event {
+            match event {
+                focus::FocusableEvent::FocusFinished => {
+                    delete_action();
+                },
+                _ => {}
+            }
 
             return Ok(());
         }
@@ -84,10 +107,7 @@ impl AppScreen for Screen {
         }
 
         if let Some(()) = self.delete_button.handle_event(&event) {
-            self.account.delete_seed_phrase().expect("Failed to delete seed phrase");
-            self.command_tx.send(AppCommand::SwitchScreen(Box::new(
-                super::porfolio::Screen::new(self.command_tx.clone(), self.account.clone())
-            ))).unwrap();
+            delete_action();
             return Ok(());
         }
 

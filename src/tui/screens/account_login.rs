@@ -8,9 +8,9 @@ use ratatui::{
 use zeroize::Zeroizing;
 
 use crate::service::account::Account;
-use crate::tui::{widgets::{focus, buttons, inputs}, app::{AppCommand, AppScreen}};
+use crate::tui::{widgets::{focus::{self, Focusable}, buttons, inputs}, app::{AppCommand, AppScreen}};
 
-const LOGIN_WIDTH: u16 = 60;
+const LOGIN_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
 const INPUT_LABEL_HEIGHT: u16 = 1;
 const INPUT_HEIGHT: u16 = 3;
@@ -40,12 +40,14 @@ impl Screen {
         let remaining_attempts = MAX_PASSWORD_ATTEMPTS;
         let pass_error = None;
 
-        let input = inputs::Input::new("Enter password").masked();
+        let mut input = inputs::Input::new("Enter password").masked();
         let back_button = buttons::Button::new("Back", Some('b'));
         let reveal_button = buttons::SwapButton::new(
             buttons::Button::new("Reveal", Some('r')).warning(),
             buttons::Button::new("Hide", Some('h')).primary());
         let login_button = buttons::Button::new("Login", Some('l')).disable();
+
+        input.set_focused(true);
 
         Self {
             command_tx,
@@ -62,23 +64,9 @@ impl Screen {
 
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
-        if focus::handle_scoped_event(&mut [&mut self.input], &event) {
-            self.login_button.disabled = self.input.value.is_empty();
-            return Ok(());
-        }
+        let scoped_event = focus::handle_scoped_event(&mut [&mut self.input], &event);
 
-        if let Some(()) = self.back_button.handle_event(&event) {
-            let welcome_screen = Box::new(super::welcome::Screen::new(self.command_tx.clone()));
-            self.command_tx.send(AppCommand::SwitchScreen(welcome_screen)).unwrap();
-            return Ok(());
-        }
-
-        if let Some(reveal) = self.reveal_button.handle_event(&event) {
-            self.input.masked = !reveal;
-            return Ok(());
-        }
-
-        if let Some(()) = self.login_button.handle_event(&event) {
+        let mut login_action = || {
             match Account::login(self.address, &self.input.value) {
                 Ok(account) => {
                     let porfolio = Box::new(super::porfolio::Screen::new(
@@ -95,6 +83,34 @@ impl AppScreen for Screen {
                     }
                 }
             }
+        };
+
+        if let Some(event) = scoped_event {
+            match event {
+                focus::FocusableEvent::Input(word) => {
+                    self.login_button.disabled = word.is_empty();
+                },
+                focus::FocusableEvent::FocusFinished => {
+                    login_action();
+                },
+                _ => {}
+            }
+            return Ok(());
+        }
+
+        if let Some(()) = self.back_button.handle_event(&event) {
+            let welcome_screen = Box::new(super::welcome::Screen::new(self.command_tx.clone()));
+            self.command_tx.send(AppCommand::SwitchScreen(welcome_screen)).unwrap();
+            return Ok(());
+        }
+
+        if let Some(reveal) = self.reveal_button.handle_event(&event) {
+            self.input.masked = !reveal;
+            return Ok(());
+        }
+
+        if let Some(()) = self.login_button.handle_event(&event) {
+            login_action();
         }
         Ok(())
     }

@@ -8,7 +8,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::{core::seed_phrase, service::account};
+use crate::{core::seed_phrase, service::account, tui::widgets::focus::Focusable};
 use crate::tui::app::{AppCommand, AppScreen};
 
 use crate::tui::widgets::{buttons, inputs, focus};
@@ -38,7 +38,7 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, seed_phrase: seed_phrase::SeedPhrase) -> Self {
-        let first_input = inputs::Input::new("Enter password").masked();
+        let mut first_input = inputs::Input::new("Enter password").masked();
         let second_input = inputs::Input::new("Confirm password").masked();
         let back_button = buttons::Button::new("Back", Some('b'));
         let reveal_button = buttons::SwapButton::new(
@@ -46,40 +46,17 @@ impl Screen {
             buttons::Button::new("Hide", Some('h')).primary());
         let save_button = buttons::Button::new("Save", Some('s'));
 
+        first_input.set_focused(true);
+
         Self { command_tx, seed_phrase, first_input, second_input, back_button, reveal_button, save_button }
     }
 }
 
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
-        focus::handle_scoped_event(&mut [&mut self.first_input, &mut self.second_input], &event);
+        let scoped_event = focus::handle_scoped_event(
+            &mut [&mut self.first_input, &mut self.second_input], &event);
 
-        if let Some(()) = self.back_button.handle_event(&event) {
-            let create_screeen = Box::new(super::account_create::Screen::new(
-                self.command_tx.clone(), self.seed_phrase.clone()));
-            self.command_tx
-                .send(AppCommand::SwitchScreen(create_screeen))
-                .unwrap();
-            return Ok(());
-        }
-
-        if let Some(reveal) = self.reveal_button.handle_event(&event) {
-            self.first_input.masked = !reveal;
-            self.second_input.masked = !reveal;
-        }
-
-        if let Some(()) = self.save_button.handle_event(&event) {
-            // TODO: validate password here
-            let password = Zeroizing::new(self.first_input.value.clone());
-            let account = account::Account::create(&self.seed_phrase, &password).expect("Fatal issue with creating an account");
-            let porfolio = Box::new(super::porfolio::Screen::new(self.command_tx.clone(), account));
-            self.command_tx.send(AppCommand::SwitchScreen(porfolio)).unwrap();
-        }
-
-        Ok(())
-    }
-
-    fn render(&mut self, frame: &mut Frame) {
         let first_password = &self.first_input.value;
         let second_password = &self.second_input.value;
 
@@ -99,6 +76,44 @@ impl AppScreen for Screen {
             }
         }
 
+        let secure_action = || {
+            if first_password.is_empty() || first_password != second_password { // TODO: validate password here
+                return;
+            }
+            let password = Zeroizing::new(first_password.to_string());
+            let account = account::Account::create(&self.seed_phrase, &password).expect("Fatal issue with creating an account");
+            let porfolio = Box::new(super::porfolio::Screen::new(self.command_tx.clone(), account));
+            self.command_tx.send(AppCommand::SwitchScreen(porfolio)).unwrap();
+        };
+
+        if let Some(event) = scoped_event {
+            if let focus::FocusableEvent::FocusFinished = event {
+                secure_action();
+            }
+        }
+
+        if let Some(()) = self.back_button.handle_event(&event) {
+            let create_screeen = Box::new(super::account_create::Screen::new(
+                self.command_tx.clone(), self.seed_phrase.clone()));
+            self.command_tx
+                .send(AppCommand::SwitchScreen(create_screeen))
+                .unwrap();
+            return Ok(());
+        }
+
+        if let Some(reveal) = self.reveal_button.handle_event(&event) {
+            self.first_input.masked = !reveal;
+            self.second_input.masked = !reveal;
+        }
+
+        if let Some(()) = self.save_button.handle_event(&event) {
+            secure_action();
+        }
+
+        Ok(())
+    }
+
+    fn render(&mut self, frame: &mut Frame) {
         let area = frame.area();
         let horizontal_padding = (area.width.saturating_sub(SECURE_WIDTH)) / 2;
 

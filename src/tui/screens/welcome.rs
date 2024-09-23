@@ -11,7 +11,7 @@ use ratatui::{
 use crate::{core::seed_phrase::SeedPhrase, service::account::Account};
 use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
 
-const WELCOME_WIDTH: u16 = 60;
+const WELCOME_WIDTH: u16 = 80;
 const LOGO_HEIGHT: u16 = 20;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;

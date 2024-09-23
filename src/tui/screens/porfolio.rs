@@ -9,7 +9,7 @@ use ratatui::{
 use crate::service::account::Account;
 use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
 
-const PORFOLIO_WIDTH: u16 = 60;
+const PORFOLIO_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 2;
 const ACCOUNT_HEIGHT: u16 = 3;
 const BUTTONS_ROW_HEIGHT: u16 = 3;

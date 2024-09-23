@@ -150,6 +150,8 @@ impl MultiSwitch {
                 button.active = true;
                 self.active_index = index;
             }
+        } else if self.options.len() > 0 {
+            self.set_active(0)
         }
     }
 

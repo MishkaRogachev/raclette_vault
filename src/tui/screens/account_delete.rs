@@ -10,7 +10,7 @@ use ratatui::{
 use crate::service::account::Account;
 use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
 
-const DELETE_ACCOUNT_WIDTH: u16 = 60;
+const DELETE_ACCOUNT_WIDTH: u16 = 80;
 const SKULL_HEIGHT: u16 = 20;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;

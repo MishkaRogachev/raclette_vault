@@ -12,8 +12,8 @@ use crate::core::seed_phrase::SeedPhrase;
 use crate::tui::app::{AppCommand, AppScreen};
 use crate::tui::widgets::{buttons, mnemonic};
 
-const INTRO_HEIGHT: u16 = 2;
 const IMPORT_WIDTH: u16 = 80;
+const INTRO_HEIGHT: u16 = 2;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const VALID_SEED_PHRASE: &str = "Your seed phrase was sucesfully imported! You may access it later in the app.";
