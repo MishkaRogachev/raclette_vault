@@ -18,7 +18,7 @@ pub const BIG_LOGO: &str = r#"
            ░    ░   ▒   ░ ░        ░                       
 "#;
 
-pub const KEY_PAIR: &str = r#"
+pub const KEYS: &str = r#"
                        ▒▒░░▒░                     
                       ▒░    ▒░                    
                     ░▒▒▒▒▒▒▒▒▒                    

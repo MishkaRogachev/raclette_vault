@@ -12,7 +12,7 @@ use crate::{core::seed_phrase::SeedPhrase, service::account::Account};
 use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
 
 const WELCOME_WIDTH: u16 = 80;
-const LOGO_HEIGHT: u16 = 20;
+const LOGO_HALF_HEIGHT: u16 = 8;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
@@ -101,10 +101,9 @@ impl AppScreen for Screen {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Min(0), // Fill height
-                Constraint::Length(LOGO_HEIGHT),
+                Constraint::Fill(LOGO_HALF_HEIGHT), // Logo
                 Constraint::Length(WARNING_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
-                Constraint::Min(0), // Fill height
             ])
             .split(centered_area);
 

@@ -7,7 +7,7 @@ use ratatui::{
 
 use super::app::{App, AppScreen};
 
-const MIN_TERMINAL_WIDTH: u16 = 60;
+const MIN_TERMINAL_WIDTH: u16 = 80;
 const MIN_TERMINAL_HEIGHT: u16 = 13;
 
 pub struct Tui {

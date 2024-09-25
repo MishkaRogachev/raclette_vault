@@ -100,7 +100,7 @@ impl AppScreen for Screen {
         };
 
         if let Some(event) = focus::handle_scoped_event(&mut [&mut self.input], &event) {
-            if let focus::FocusableEvent::Enter = event {
+            if let focus::FocusableEvent::FocusFinished = event {
                 if !self.input.value.is_empty() {
                     next_action(&self.input.value);
                 }

@@ -34,9 +34,9 @@ impl MnemonicWords {
             .direction(Direction::Vertical)
             .horizontal_margin(area.width / column_count as u16 / 2)
             .constraints([
-                Constraint::Min(0), // Fill height
-                Constraint::Length(MNEMONIC_HEIGHT),
-                Constraint::Min(0), // Fill height
+                Constraint::Fill(0), // Fill height
+                Constraint::Length(word_height * words_per_column as u16),
+                Constraint::Fill(0), // Fill height
             ])
             .split(area);
 

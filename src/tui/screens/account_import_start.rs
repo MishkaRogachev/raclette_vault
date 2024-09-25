@@ -8,15 +8,15 @@ use ratatui::{
 };
 
 use crate::tui::app::{AppCommand, AppScreen};
-use crate::tui::widgets::buttons;
+use crate::tui::widgets::{buttons, ascii};
 
 const IMPORT_WIDTH: u16 = 80;
-const INTRO_HEIGHT: u16 = 2;
+const INTRO_HEIGHT: u16 = 3;
 const SWITCH_HEIGHT: u16 = 3;
 const OUTRO_HEIGHT: u16 = 2;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
-const INTRO_TEXT: &str = "Choose the number of words in your seed phrase.";
+const INTRO_TEXT: &str = "Strat importing your mnemonic seed phrase.\n Choose the correct number of words.";
 const OUTRO_TEXT: &str = "Next, you will be prompted to enter your seed phrase words in the correct order.";
 
 pub struct Screen {
@@ -89,10 +89,9 @@ impl AppScreen for Screen {
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Length(SWITCH_HEIGHT),
-                Constraint::Min(0), // Fill height
+                Constraint::Fill(0), // Logo
                 Constraint::Length(OUTRO_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
             ])
@@ -101,14 +100,19 @@ impl AppScreen for Screen {
         let intro_text = Paragraph::new(INTRO_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
-        frame.render_widget(intro_text, content_layout[1]);
+        frame.render_widget(intro_text, content_layout[0]);
 
-        self.word_cnt_switch.render(frame, content_layout[2]);
+        self.word_cnt_switch.render(frame, content_layout[1]);
+
+        let logo = Paragraph::new(ascii::KEYS)
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(Alignment::Center);
+        frame.render_widget(logo, content_layout[2]);
 
         let outro_text = Paragraph::new(OUTRO_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
-        frame.render_widget(outro_text, content_layout[4]);
+        frame.render_widget(outro_text, content_layout[3]);
 
         let buttons_row = Layout::default()
             .direction(Direction::Horizontal)
@@ -116,7 +120,7 @@ impl AppScreen for Screen {
                 Constraint::Percentage(50),
                 Constraint::Percentage(50),
             ])
-            .split(content_layout[5]);
+            .split(content_layout[4]);
 
         self.back_button.render(frame, buttons_row[0]);
         self.continue_button.render(frame, buttons_row[1]);
