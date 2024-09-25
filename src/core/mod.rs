@@ -4,3 +4,5 @@ pub mod seed_phrase;
 mod seed_phrase_test;
 pub mod chain;
 mod chain_test;
+pub mod provider;
+mod provider_test;

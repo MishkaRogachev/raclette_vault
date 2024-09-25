@@ -7,6 +7,10 @@ mod tui;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    if std::env::var("INFURA_TOKEN").is_err() {
+        panic!("INFURA_TOKEN env variable is not set!");
+    }
+
     let shutdown_handle = Arc::new(AtomicBool::new(false));
 
     let events = tui::event::EventHandler::new(shutdown_handle.clone());
