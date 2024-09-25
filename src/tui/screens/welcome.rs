@@ -86,6 +86,8 @@ impl AppScreen for Screen {
         Ok(())
     }
 
+    fn update(&mut self) {}
+
     fn render(&mut self, frame: &mut Frame) {
         let area = frame.area();
         let horizontal_padding = (area.width.saturating_sub(WELCOME_WIDTH)) / 2;

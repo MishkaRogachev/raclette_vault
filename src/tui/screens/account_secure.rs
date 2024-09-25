@@ -60,6 +60,47 @@ impl AppScreen for Screen {
         let first_password = &self.first_input.value;
         let second_password = &self.second_input.value;
 
+        let secure_action = || {
+            if first_password.is_empty() || first_password != second_password { // TODO: validate password here
+                return;
+            }
+            let password = Zeroizing::new(first_password.to_string());
+            let session = session::Session::create_account(&self.seed_phrase, &password).expect("Fatal issue with creating an account");
+            let porfolio = Box::new(super::porfolio::Screen::new(self.command_tx.clone(), session));
+            self.command_tx.send(AppCommand::SwitchScreen(porfolio)).unwrap();
+        };
+
+        if let Some(event) = scoped_event {
+            if let focus::FocusableEvent::FocusFinished = event {
+                secure_action();
+            }
+        } else {
+            if let Some(()) = self.back_button.handle_event(&event) {
+                let create_screeen = Box::new(super::account_create::Screen::new(
+                    self.command_tx.clone(), self.seed_phrase.clone()));
+                self.command_tx
+                    .send(AppCommand::SwitchScreen(create_screeen))
+                    .unwrap();
+                return Ok(());
+            }
+
+            if let Some(reveal) = self.reveal_button.handle_event(&event) {
+                self.first_input.masked = !reveal;
+                self.second_input.masked = !reveal;
+            }
+
+            if let Some(()) = self.save_button.handle_event(&event) {
+                secure_action();
+            }
+        }
+
+        Ok(())
+    }
+
+    fn update(&mut self) {
+        let first_password = &self.first_input.value;
+        let second_password = &self.second_input.value;
+
         if first_password.is_empty() {
             self.first_input.color = Color::Red;
             self.second_input.color = Color::Red;
@@ -75,42 +116,6 @@ impl AppScreen for Screen {
                 self.save_button.disabled = false;
             }
         }
-
-        let secure_action = || {
-            if first_password.is_empty() || first_password != second_password { // TODO: validate password here
-                return;
-            }
-            let password = Zeroizing::new(first_password.to_string());
-            let session = session::Session::create_account(&self.seed_phrase, &password).expect("Fatal issue with creating an account");
-            let porfolio = Box::new(super::porfolio::Screen::new(self.command_tx.clone(), session));
-            self.command_tx.send(AppCommand::SwitchScreen(porfolio)).unwrap();
-        };
-
-        if let Some(event) = scoped_event {
-            if let focus::FocusableEvent::FocusFinished = event {
-                secure_action();
-            }
-        }
-
-        if let Some(()) = self.back_button.handle_event(&event) {
-            let create_screeen = Box::new(super::account_create::Screen::new(
-                self.command_tx.clone(), self.seed_phrase.clone()));
-            self.command_tx
-                .send(AppCommand::SwitchScreen(create_screeen))
-                .unwrap();
-            return Ok(());
-        }
-
-        if let Some(reveal) = self.reveal_button.handle_event(&event) {
-            self.first_input.masked = !reveal;
-            self.second_input.masked = !reveal;
-        }
-
-        if let Some(()) = self.save_button.handle_event(&event) {
-            secure_action();
-        }
-
-        Ok(())
     }
 
     fn render(&mut self, frame: &mut Frame) {

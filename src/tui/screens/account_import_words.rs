@@ -73,11 +73,6 @@ impl Screen {
 
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
-        if let Some(reveal) = self.reveal_button.handle_event(&event) {
-            self.input.masked = !reveal;
-            return Ok(());
-        }
-
         let revealed = !self.input.masked;
         let next_action = |word: &str| {
             let mut words = self.words.clone();
@@ -121,15 +116,21 @@ impl AppScreen for Screen {
             self.command_tx.send(AppCommand::SwitchScreen(welcome_screen)).unwrap();
         }
 
+        if let Some(reveal) = self.reveal_button.handle_event(&event) {
+            self.input.masked = !reveal;
+            return Ok(());
+        }
+
         if let Some(()) = self.next_button.handle_event(&event) {
             next_action(&self.input.value);
         }
         Ok(())
     }
 
+    fn update(&mut self) {}
+
     fn render(&mut self, frame: &mut Frame) {
         let area = frame.area();
-
         let horizontal_padding = (area.width.saturating_sub(IMPORT_WIDTH)) / 2;
 
         let centered_area = Rect {

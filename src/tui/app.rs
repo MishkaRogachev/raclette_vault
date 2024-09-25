@@ -6,6 +6,7 @@ use super::screens::welcome;
 
 pub trait AppScreen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()>;
+    fn update(&mut self);
     fn render(&mut self, frame: &mut Frame);
 }
 
@@ -49,6 +50,10 @@ impl App {
 impl AppScreen for App {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         self.current_screen.handle_event(event)
+    }
+
+    fn update(&mut self) {
+        self.current_screen.update()
     }
 
     fn render(&mut self, frame: &mut Frame) {

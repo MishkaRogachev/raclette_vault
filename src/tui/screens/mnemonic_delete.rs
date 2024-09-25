@@ -63,21 +63,7 @@ impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let scoped_event = focus::handle_scoped_event(&mut [&mut self.input], &event);
 
-        let valid = if let Some(word) = self.seed_phrase.get_words().get(self.word_index) {
-            let valid = *word == *self.input.value;
-            self.delete_button.disabled = !valid;
-            self.input.color = if valid { Color::Yellow } else { Color::Red };
-            valid
-        } else {
-            self.delete_button.disabled = true;
-            self.input.color = Color::Red;
-            false
-        };
-
         let delete_action = || {
-            if !valid {
-                return;
-            }
             self.session.delete_seed_phrase().expect("Failed to delete seed phrase");
             self.command_tx.send(AppCommand::SwitchScreen(Box::new(
                 super::porfolio::Screen::new(self.command_tx.clone(), self.session.clone())
@@ -88,6 +74,16 @@ impl AppScreen for Screen {
                 focus::FocusableEvent::FocusFinished => {
                     delete_action();
                 },
+                focus::FocusableEvent::Input(word) => {
+                    if let Some(phrase_word) = self.seed_phrase.get_words().get(self.word_index) {
+                        let valid = word == *phrase_word;
+                        self.delete_button.disabled = !valid;
+                        self.input.color = if valid { Color::Yellow } else { Color::Red };
+                    } else {
+                        self.delete_button.disabled = true;
+                        self.input.color = Color::Red;
+                    };
+                }
                 _ => {}
             }
 
@@ -113,6 +109,8 @@ impl AppScreen for Screen {
 
         Ok(())
     }
+
+    fn update(&mut self) {}
 
     fn render(&mut self, frame: &mut Frame) {
         let area = frame.area();

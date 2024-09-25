@@ -27,13 +27,11 @@ pub struct Screen {
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session) -> Self {
         let quit_button = buttons::Button::new("Quit", Some('q'));
-
         let mut access_mnemonic = buttons::Button::new("Access mnemonic", Some('a'));
         if session.get_seed_phrase().is_err() {
             access_mnemonic.disabled = true;
         }
         let delete_account = buttons::Button::new("Delete Account", Some('d'));
-
         let manage_button = buttons::MenuButton::new(
             "Manage", Some('m'), vec![access_mnemonic, delete_account]
         );
@@ -49,7 +47,6 @@ impl Screen {
 
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
-
         if let Some(index) = self.manage_button.handle_event(&event) {
             match index {
                 0 => {
@@ -74,6 +71,8 @@ impl AppScreen for Screen {
 
         return Ok(());
     }
+
+    fn update(&mut self) {}
 
     fn render(&mut self, frame: &mut Frame) {
         let area = frame.area();

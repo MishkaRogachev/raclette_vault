@@ -36,6 +36,8 @@ impl Tui {
                 self.app.process_events();
 
                 terminal.draw(|frame| {
+                    self.app.update();
+
                     let area = frame.area();
                     if area.width < MIN_TERMINAL_WIDTH || area.height < MIN_TERMINAL_HEIGHT {
                         let warning = ratatui::widgets::Paragraph::new("Terminal window is too small")
@@ -76,7 +78,7 @@ fn setup_terminal() -> anyhow::Result<()> {
 fn restore_terminal() -> anyhow::Result<()> {
     terminal::disable_raw_mode()?;
     std::io::stdout().execute(crossterm_event::DisableMouseCapture)?;
-    std::io::stdout().execute(terminal::LeaveAlternateScreen)?;
     std::io::stdout().execute(crossterm_event::PopKeyboardEnhancementFlags)?;
+    std::io::stdout().execute(terminal::LeaveAlternateScreen)?;
     Ok(())
 }
