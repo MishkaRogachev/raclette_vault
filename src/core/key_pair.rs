@@ -6,6 +6,8 @@ use zeroize::Zeroizing;
 pub const SECRET_KEY_LEN: usize = secp256k1::constants::SECRET_KEY_SIZE;
 pub const PUBLIC_KEY_LEN: usize = secp256k1::constants::PUBLIC_KEY_SIZE;
 
+const BIP44_ETH_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
+
 const ERR_SECRET_KEY_CONVERT: &str = "Failed to convert secret_key";
 const ERR_PUBLIC_KEY_CONVERT: &str = "Failed to convert public_key";
 const ERR_PUBLIC_KEY_NOT_MATCH: &str = "Public key does not match secret key";
@@ -19,9 +21,17 @@ pub struct KeyPair {
 impl KeyPair {
     pub fn from_seed(seed: Seed) -> anyhow::Result<Self> {
         let secp = Secp256k1::new();
-        let seed_bytes = seed.as_bytes();
 
-        let secret_key = secp256k1::SecretKey::from_slice(&seed_bytes[..32])?;
+        // Derive the extended private key from the seed
+        let hd_key = hdkey::HDKey::from_master_seed(seed.as_bytes(), None)?;
+        let derived_xprv = hd_key.derive(BIP44_ETH_DERIVATION_PATH)?;
+
+        // Extract the private key from the derived key
+        let secret_key_bytes = derived_xprv.private_key()
+            .ok_or_else(|| anyhow::anyhow!("Failed to get private key"))?;
+        let secret_key = secp256k1::SecretKey::from_slice(&secret_key_bytes)?;
+
+        // Derive the public key from the private key
         let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
 
         Ok(Self::from_secp256k1(secret_key, public_key))

@@ -22,3 +22,4 @@ secp256k1 = { version = "0.20.3", features = ["rand"] }
 tiny-bip39 = "1.0.0"
 zeroize = "1.8.1"
 async-trait = "0.1.83"
+hdkey = "0.0.5"
