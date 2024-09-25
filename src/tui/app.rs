@@ -4,9 +4,10 @@ use ratatui::{crossterm::event::Event, Frame};
 
 use super::screens::welcome;
 
+#[async_trait::async_trait]
 pub trait AppScreen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()>;
-    fn update(&mut self);
+    async fn update(&mut self);
     fn render(&mut self, frame: &mut Frame);
 }
 
@@ -47,13 +48,14 @@ impl App {
     }
 }
 
+#[async_trait::async_trait]
 impl AppScreen for App {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         self.current_screen.handle_event(event)
     }
 
-    fn update(&mut self) {
-        self.current_screen.update()
+    async fn update(&mut self) {
+        self.current_screen.update().await
     }
 
     fn render(&mut self, frame: &mut Frame) {

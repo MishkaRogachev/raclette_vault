@@ -5,8 +5,9 @@ use ratatui::{
     style::{Color, Style, Stylize},
     widgets::Paragraph, Frame
 };
+use web3::types::U256;
 
-use crate::service::session::Session;
+use crate::{core::{chain::Chain, provider::Provider}, service::session::Session};
 use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
 
 const PORFOLIO_WIDTH: u16 = 80;
@@ -19,6 +20,9 @@ const INTRO_TEXT: &str = "Portfolio";
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     session: Session,
+    provider: Provider,
+    chain: Chain,
+    balance: Option<U256>,
 
     quit_button: buttons::Button,
     manage_button: buttons::MenuButton,
@@ -26,6 +30,12 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session) -> Self {
+        let infura_token = std::env::var("INFURA_TOKEN")
+            .expect("INFURA_TOKEN env var is not set");
+        let chain = Chain::EthereumMainnet;
+        let provider = Provider::new(&infura_token, chain)
+            .expect("Failed to create provider");
+
         let quit_button = buttons::Button::new("Quit", Some('q'));
         let mut access_mnemonic = buttons::Button::new("Access mnemonic", Some('a'));
         if session.get_seed_phrase().is_err() {
@@ -39,12 +49,16 @@ impl Screen {
         Self {
             command_tx,
             session,
+            provider,
+            chain,
+            balance: None,
             quit_button,
             manage_button,
         }
     }
 }
 
+#[async_trait::async_trait]
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         if let Some(index) = self.manage_button.handle_event(&event) {
@@ -72,7 +86,14 @@ impl AppScreen for Screen {
         return Ok(());
     }
 
-    fn update(&mut self) {}
+    async fn update(&mut self) {
+        if self.balance.is_none() {
+            let balance = self.provider.get_eth_balance(self.session.account)
+                .await
+                .expect("Failed to get balance");
+            self.balance = Some(balance);
+        }
+    }
 
     fn render(&mut self, frame: &mut Frame) {
         let area = frame.area();
@@ -104,7 +125,13 @@ impl AppScreen for Screen {
         frame.render_widget(intro_text, content_layout[1]);
 
         // TODO: Replace with account widget
-        let account_text = Paragraph::new(self.session.account.to_string())
+        let blance = if let Some(balance) = self.balance {
+            balance
+        } else {
+            U256::zero()
+        };
+        let account_text = Paragraph::new(
+            format!("ETH:{}; Balance: {}", self.session.account.to_string(), blance))
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
         frame.render_widget(account_text, content_layout[3]);

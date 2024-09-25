@@ -62,6 +62,7 @@ impl Screen {
     }
 }
 
+#[async_trait::async_trait]
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let scoped_event = focus::handle_scoped_event(&mut [&mut self.input], &event);
@@ -115,7 +116,7 @@ impl AppScreen for Screen {
         Ok(())
     }
 
-    fn update(&mut self) {}
+    async fn update(&mut self) {}
 
     fn render(&mut self, frame: &mut Frame) {
         let area = frame.area();

@@ -28,16 +28,15 @@ impl Tui {
         Ok(Self { shutdown_handle, app })
     }
 
-    pub fn run(mut self) -> anyhow::Result<tokio::task::JoinHandle<()>> {
-        let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stdout()))?;
+    pub fn run(mut self) -> tokio::task::JoinHandle<()> {
+        let mut terminal = Terminal::new(CrosstermBackend::new(std::io::stdout()))
+            .expect("Failed to create terminal");
 
-        Ok(tokio::spawn(async move {
+        tokio::spawn(async move {
             while !self.shutdown_handle.load(Ordering::Relaxed) {
                 self.app.process_events();
-
+                self.app.update().await;
                 terminal.draw(|frame| {
-                    self.app.update();
-
                     let area = frame.area();
                     if area.width < MIN_TERMINAL_WIDTH || area.height < MIN_TERMINAL_HEIGHT {
                         let warning = ratatui::widgets::Paragraph::new("Terminal window is too small")
@@ -46,9 +45,9 @@ impl Tui {
                     } else {
                         self.app.render(frame);
                     }
-                }).unwrap();
+                }).expect("failed to draw the frame");
             }
-        }))
+        })
     }
 
     pub fn stop(&mut self) -> anyhow::Result<()> {

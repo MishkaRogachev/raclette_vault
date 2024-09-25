@@ -45,6 +45,7 @@ impl Screen {
     }
 }
 
+#[async_trait::async_trait]
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         if let Some(is_on) = self.word_cnt_switch.handle_event(&event) {
@@ -75,7 +76,7 @@ impl AppScreen for Screen {
         Ok(())
     }
 
-    fn update(&mut self) {}
+    async fn update(&mut self) {}
 
     fn render(&mut self, frame: &mut Frame) {
         let area = frame.area();

@@ -52,6 +52,7 @@ impl Screen {
     }
 }
 
+#[async_trait::async_trait]
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let scoped_event = focus::handle_scoped_event(
@@ -97,7 +98,7 @@ impl AppScreen for Screen {
         Ok(())
     }
 
-    fn update(&mut self) {
+    async fn update(&mut self) {
         let first_password = &self.first_input.value;
         let second_password = &self.second_input.value;
 

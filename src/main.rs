@@ -18,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
     let tui = tui::Tui::new(shutdown_handle, app)?;
 
     tokio::select! {
-        _ = tui.run()? => {},
+        _ = tui.run() => {},
         _ = events.handle_events() => {},
     }
 
