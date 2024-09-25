@@ -6,7 +6,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::service::account::Account;
+use crate::service::session::Session;
 use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
 
 const PORFOLIO_WIDTH: u16 = 80;
@@ -18,18 +18,18 @@ const INTRO_TEXT: &str = "Portfolio";
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
-    account: Account,
+    session: Session,
 
     quit_button: buttons::Button,
     manage_button: buttons::MenuButton,
 }
 
 impl Screen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>, account: Account) -> Self {
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session) -> Self {
         let quit_button = buttons::Button::new("Quit", Some('q'));
 
         let mut access_mnemonic = buttons::Button::new("Access mnemonic", Some('a'));
-        if account.get_seed_phrase().is_err() {
+        if session.get_seed_phrase().is_err() {
             access_mnemonic.disabled = true;
         }
         let delete_account = buttons::Button::new("Delete Account", Some('d'));
@@ -40,7 +40,7 @@ impl Screen {
 
         Self {
             command_tx,
-            account,
+            session,
             quit_button,
             manage_button,
         }
@@ -54,13 +54,13 @@ impl AppScreen for Screen {
             match index {
                 0 => {
                     self.command_tx.send(AppCommand::SwitchScreen(Box::new(
-                        super::mnemonic_access::Screen::new(self.command_tx.clone(), self.account.clone())
+                        super::mnemonic_access::Screen::new(self.command_tx.clone(), self.session.clone())
                     ))).unwrap();
                 },
                 1 => {
                     self.command_tx.send(AppCommand::SwitchScreen(Box::new(
                         super::account_delete::Screen::new(
-                            self.command_tx.clone(), self.account.clone())
+                            self.command_tx.clone(), self.session.clone())
                     ))).unwrap();
                 },
                 _ => {}
@@ -105,7 +105,7 @@ impl AppScreen for Screen {
         frame.render_widget(intro_text, content_layout[1]);
 
         // TODO: Replace with account widget
-        let account_text = Paragraph::new(self.account.address.to_string())
+        let account_text = Paragraph::new(self.session.account.to_string())
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
         frame.render_widget(account_text, content_layout[3]);

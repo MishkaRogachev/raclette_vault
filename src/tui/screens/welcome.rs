@@ -8,7 +8,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::{core::seed_phrase::SeedPhrase, service::account::Account};
+use crate::{core::seed_phrase::SeedPhrase, service::session::Session};
 use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
 
 const WELCOME_WIDTH: u16 = 80;
@@ -34,7 +34,7 @@ impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
         let quit_button = buttons::Button::new("Quit", Some('q'));
         let process_actions = {
-            let accounts = Account::list_accounts().expect("Failed to list accounts");
+            let accounts = Session::list_accounts().expect("Failed to list accounts");
             match accounts.len() {
                 0 => {
                     let import_button = buttons::Button::new("Import Mnemonic", Some('i'));

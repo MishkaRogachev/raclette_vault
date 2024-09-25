@@ -10,19 +10,19 @@ const ERR_ACCOUNT_NOT_FOUND: &str = "Account not found";
 const ERR_WRONG_PASSWORD_PROVIDED: &str = "Wrong password provided";
 
 #[derive(Clone)]
-pub struct Account {
-    pub address: web3::types::Address,
+pub struct Session {
+    pub account: web3::types::Address,
     db: Arc<persistence::db::Db>
 }
 
-impl Account {
-    pub fn create(seed_phrase: &SeedPhrase, password: &str) -> anyhow::Result<Self> {
+impl Session {
+    pub fn create_account(seed_phrase: &SeedPhrase, password: &str) -> anyhow::Result<Self> {
         // NOTE: extra password may be used for seed_phrase -> keypair conversion
         let keypair = KeyPair::from_seed(seed_phrase.to_seed(""))?;
         keypair.validate()?;
 
-        let address = keypair.get_address();
-        let db = persistence::manage::open_database(&db_path()?, address, password)?;
+        let account = keypair.get_address();
+        let db = persistence::manage::open_database(&db_path()?, account, password)?;
 
         let words = seed_phrase.get_words();
         let serialized_seed_phrase = serde_json::to_vec(&words)?;
@@ -31,32 +31,32 @@ impl Account {
         let serialized_keypair = serde_json::to_vec(&keypair)?;
         db.insert(ROOT_KEYPAIR, &serialized_keypair)?;
 
-        Ok(Account {
-            address,
+        Ok(Session {
+            account,
             db: Arc::new(db),
         })
     }
 
-    pub fn login(address: web3::types::Address, password: &str) -> anyhow::Result<Self> {
-        let db = persistence::manage::open_database(&db_path()?, address, password)?;
-        let account = Account {
-            address,
+    pub fn login(account: web3::types::Address, password: &str) -> anyhow::Result<Self> {
+        let db = persistence::manage::open_database(&db_path()?, account, password)?;
+        let session = Session {
+            account,
             db: Arc::new(db),
         };
 
-        if account.get_keypair().is_err() {
+        if session.get_keypair().is_err() {
             return Err(anyhow::anyhow!(ERR_WRONG_PASSWORD_PROVIDED));
         }
 
-        Ok(account)
+        Ok(session)
     }
 
     pub fn list_accounts() -> anyhow::Result<Vec<web3::types::Address>> {
         persistence::manage::list_databases(&db_path()?)
     }
 
-    pub fn remove_account(address: web3::types::Address) -> anyhow::Result<()> {
-        persistence::manage::remove_database(&db_path()?, address)
+    pub fn remove_account(account: web3::types::Address) -> anyhow::Result<()> {
+        persistence::manage::remove_database(&db_path()?, account)
     }
 
     pub fn get_seed_phrase(&self) -> anyhow::Result<SeedPhrase> {
@@ -86,7 +86,7 @@ impl Account {
     }
 
     pub fn delete_account(&self) -> anyhow::Result<()> {
-        Self::remove_account(self.address)
+        Self::remove_account(self.account)
     }
 }
 

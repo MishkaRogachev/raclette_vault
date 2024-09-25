@@ -7,7 +7,7 @@ use ratatui::{
 };
 use zeroize::Zeroizing;
 
-use crate::service::account::Account;
+use crate::service::session::Session;
 use crate::tui::{widgets::{focus::{self, Focusable}, buttons, inputs}, app::{AppCommand, AppScreen}};
 
 const LOGIN_WIDTH: u16 = 80;
@@ -67,7 +67,7 @@ impl AppScreen for Screen {
         let scoped_event = focus::handle_scoped_event(&mut [&mut self.input], &event);
 
         let mut login_action = || {
-            match Account::login(self.address, &self.input.value) {
+            match Session::login(self.address, &self.input.value) {
                 Ok(account) => {
                     let porfolio = Box::new(super::porfolio::Screen::new(
                         self.command_tx.clone(), account));

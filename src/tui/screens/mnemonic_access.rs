@@ -7,7 +7,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::{core::seed_phrase::SeedPhrase, service::account::Account};
+use crate::{core::seed_phrase::SeedPhrase, service::session::Session};
 use crate::tui::app::{AppCommand, AppScreen};
 use crate::tui::widgets::{buttons, mnemonic};
 
@@ -19,7 +19,7 @@ const INTRO_TEXT: &str = "This is your mnemonic seed phrase. Handle it with care
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
-    account: Account,
+    session: Session,
     seed_phrase: SeedPhrase,
 
     mnemonic_words: mnemonic::MnemonicWords,
@@ -29,8 +29,8 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>, account: Account) -> Self {
-        let seed_phrase = account.get_seed_phrase().unwrap();
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session) -> Self {
+        let seed_phrase = session.get_seed_phrase().unwrap();
 
         let mnemonic_words = mnemonic::MnemonicWords::new(seed_phrase.get_words_zeroizing());
         let back_button = buttons::Button::new("Back", Some('b'));
@@ -42,7 +42,7 @@ impl Screen {
 
         Self {
             command_tx,
-            account,
+            session,
             seed_phrase,
             mnemonic_words,
             back_button,
@@ -55,7 +55,7 @@ impl Screen {
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         if let Some(()) = self.back_button.handle_event(&event) {
-            let portfolio_screen = Box::new(super::porfolio::Screen::new(self.command_tx.clone(), self.account.clone()));
+            let portfolio_screen = Box::new(super::porfolio::Screen::new(self.command_tx.clone(), self.session.clone()));
             self.command_tx
                 .send(AppCommand::SwitchScreen(portfolio_screen))
                 .unwrap();
@@ -69,7 +69,7 @@ impl AppScreen for Screen {
 
         if let Some(()) = self.delete_button.handle_event(&event) {
             let delete_mnemonic_screen = Box::new(super::mnemonic_delete::Screen::new(
-                self.command_tx.clone(), self.account.clone(), self.seed_phrase.clone()));
+                self.command_tx.clone(), self.session.clone(), self.seed_phrase.clone()));
             self.command_tx
                 .send(AppCommand::SwitchScreen(delete_mnemonic_screen))
                 .unwrap();

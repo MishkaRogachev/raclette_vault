@@ -7,7 +7,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::service::account::Account;
+use crate::service::session::Session;
 use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
 
 const DELETE_ACCOUNT_WIDTH: u16 = 80;
@@ -19,18 +19,18 @@ const WARNING_TEXT: &str = "Are you going to delete your account and root keypai
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
-    account: Account,
+    session: Session,
 
     cancel_button: buttons::Button,
     delete_button: buttons::Button,
 }
 
 impl Screen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>, account: Account) -> Self {
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session) -> Self {
         let cancel_button = buttons::Button::new("Cancel", Some('c')).primary();
         let delete_button = buttons::Button::new("Delete Account", Some('d')).warning();
 
-        Self { command_tx, account, cancel_button, delete_button }
+        Self { command_tx, session, cancel_button, delete_button }
     }
 }
 
@@ -38,13 +38,13 @@ impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         if let Some(()) = self.cancel_button.handle_event(&event) {
             let porfolio = Box::new(super::porfolio::Screen::new(
-                self.command_tx.clone(), self.account.clone()));
+                self.command_tx.clone(), self.session.clone()));
             self.command_tx.send(AppCommand::SwitchScreen(porfolio)).unwrap();
             return Ok(());
         }
 
         if let Some(()) = self.delete_button.handle_event(&event) {
-            self.account.delete_account().expect("Failed to delete account");
+            self.session.delete_account().expect("Failed to delete account");
             let welcome_screen = Box::new(super::welcome::Screen::new(
                 self.command_tx.clone()));
             self.command_tx.send(AppCommand::SwitchScreen(welcome_screen)).unwrap();

@@ -8,7 +8,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::{core::seed_phrase, service::account, tui::widgets::focus::Focusable};
+use crate::{core::seed_phrase, service::session, tui::widgets::focus::Focusable};
 use crate::tui::app::{AppCommand, AppScreen};
 
 use crate::tui::widgets::{buttons, inputs, focus};
@@ -81,8 +81,8 @@ impl AppScreen for Screen {
                 return;
             }
             let password = Zeroizing::new(first_password.to_string());
-            let account = account::Account::create(&self.seed_phrase, &password).expect("Fatal issue with creating an account");
-            let porfolio = Box::new(super::porfolio::Screen::new(self.command_tx.clone(), account));
+            let session = session::Session::create_account(&self.seed_phrase, &password).expect("Fatal issue with creating an account");
+            let porfolio = Box::new(super::porfolio::Screen::new(self.command_tx.clone(), session));
             self.command_tx.send(AppCommand::SwitchScreen(porfolio)).unwrap();
         };
 

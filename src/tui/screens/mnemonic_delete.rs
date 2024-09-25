@@ -6,7 +6,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::{core::seed_phrase::SeedPhrase, service::account::Account};
+use crate::{core::seed_phrase::SeedPhrase, service::session::Session};
 use crate::tui::{widgets::{focus::{self, Focusable}, buttons, inputs}, app::{AppCommand, AppScreen}};
 
 const DELETE_MNEMONIC_WIDTH: u16 = 80;
@@ -22,7 +22,7 @@ const ERROR_TEXT: &str = "Incorrect word";
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
-    account: Account,
+    session: Session,
     seed_phrase: SeedPhrase,
     word_index: usize,
 
@@ -33,7 +33,7 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>, account: Account, seed_phrase: SeedPhrase) -> Self {
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session, seed_phrase: SeedPhrase) -> Self {
         let word_index = rand::random::<usize>() % seed_phrase.get_words().len();
 
         let mut input = inputs::Input::new("Enter word").masked();
@@ -48,7 +48,7 @@ impl Screen {
 
         Self {
             command_tx,
-            account,
+            session,
             seed_phrase,
             word_index,
             input,
@@ -78,9 +78,9 @@ impl AppScreen for Screen {
             if !valid {
                 return;
             }
-            self.account.delete_seed_phrase().expect("Failed to delete seed phrase");
+            self.session.delete_seed_phrase().expect("Failed to delete seed phrase");
             self.command_tx.send(AppCommand::SwitchScreen(Box::new(
-                super::porfolio::Screen::new(self.command_tx.clone(), self.account.clone())
+                super::porfolio::Screen::new(self.command_tx.clone(), self.session.clone())
             ))).unwrap();
         };
         if let Some(event) = scoped_event {
@@ -96,7 +96,7 @@ impl AppScreen for Screen {
 
         if let Some(()) = self.back_button.handle_event(&event) {
             self.command_tx.send(AppCommand::SwitchScreen(Box::new(
-                super::mnemonic_access::Screen::new(self.command_tx.clone(), self.account.clone())
+                super::mnemonic_access::Screen::new(self.command_tx.clone(), self.session.clone())
             ))).unwrap();
             return Ok(());
         }
