@@ -1,9 +1,10 @@
 use std::ops::Deref;
+use hdkey::HDKey;
 use secp256k1::Secp256k1;
 use zeroize::Zeroizing;
 
 pub const SECRET_KEY_LEN: usize = secp256k1::constants::SECRET_KEY_SIZE;
-pub const PUBLIC_KEY_LEN: usize = secp256k1::constants::PUBLIC_KEY_SIZE;
+pub const PUBLIC_KEY_LEN: usize = secp256k1::constants::UNCOMPRESSED_PUBLIC_KEY_SIZE;
 
 const BIP44_ETH_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 
@@ -22,7 +23,7 @@ impl KeyPair {
         let secp = Secp256k1::new();
 
         // Derive the extended private key from the seed
-        let hd_key = hdkey::HDKey::from_master_seed(&seed, None)?;
+        let hd_key = HDKey::from_master_seed(&seed, None)?;
         let derived_xprv = hd_key.derive(BIP44_ETH_DERIVATION_PATH)?;
 
         // Extract the private key from the derived key
@@ -39,12 +40,13 @@ impl KeyPair {
     pub fn from_secp256k1(secret_key: secp256k1::SecretKey, public_key: secp256k1::PublicKey) -> Self {
         Self {
             secret_key: Zeroizing::new(secret_key[..].try_into().expect(&err_secret_key_len())),
-            public_key: Zeroizing::new(public_key.serialize())
+            public_key: Zeroizing::new(public_key.serialize_uncompressed())
         }
     }
 
     pub fn get_address(&self) -> web3::types::Address {
         let public_key = &self.public_key;
+
         let hash = web3::signing::keccak256(&public_key[1..]);
         let address = &hash[12..];
         web3::types::Address::from_slice(address)
@@ -55,7 +57,7 @@ impl KeyPair {
         let secret_key = secp256k1::SecretKey::from_slice(self.secret_key.deref())?;
         let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
 
-        if *self.public_key.deref() != public_key.serialize() {
+        if *self.public_key.deref() != public_key.serialize_uncompressed() {
             return Err(anyhow::anyhow!(ERR_PUBLIC_KEY_NOT_MATCH));
         }
         Ok(())
