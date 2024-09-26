@@ -7,6 +7,7 @@ use ratatui::{
     Frame,
 };
 
+use crate::core::seed_phrase::WordCount;
 use crate::tui::app::{AppCommand, AppScreen};
 use crate::tui::widgets::{buttons, ascii};
 
@@ -21,7 +22,7 @@ const OUTRO_TEXT: &str = "Next, you will be prompted to enter your seed phrase w
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
-    mtype: bip39::MnemonicType,
+    word_count: WordCount,
     word_cnt_switch: buttons::MultiSwitch,
     back_button: buttons::Button,
     continue_button: buttons::Button,
@@ -29,7 +30,7 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
-        let mtype = bip39::MnemonicType::Words12;
+        let word_count = WordCount::Words12;
         let word_cnt_switch = buttons::MultiSwitch::new(vec![
                 buttons::Button::new("12 words", Some('1')), buttons::Button::new("24 words", Some('2'))]);
         let back_button = buttons::Button::new("Back", Some('b'));
@@ -37,7 +38,7 @@ impl Screen {
 
         Self {
             command_tx,
-            mtype,
+            word_count,
             word_cnt_switch,
             back_button,
             continue_button,
@@ -49,10 +50,10 @@ impl Screen {
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         if let Some(is_on) = self.word_cnt_switch.handle_event(&event) {
-            self.mtype = if is_on == 1 {
-                bip39::MnemonicType::Words24
+            self.word_count = if is_on == 1 {
+                WordCount::Words24
             } else {
-                bip39::MnemonicType::Words12
+                WordCount::Words12
             };
             return Ok(());
         }
@@ -67,7 +68,7 @@ impl AppScreen for Screen {
 
         if let Some(()) = self.continue_button.handle_event(&event) {
             let import_words_screen = Box::new(super::account_import_words::Screen::new(
-                self.command_tx.clone(), self.mtype, vec![], 0, false));
+                self.command_tx.clone(), self.word_count, vec![], 0, false));
             self.command_tx
                 .send(AppCommand::SwitchScreen(import_words_screen))
                 .unwrap();

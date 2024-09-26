@@ -5,21 +5,24 @@ edition = "2021"
 
 [dependencies]
 regex = "1.10.6"
-web3 = "0.19.0"
-ratatui = "0.28.0"
+uuid = { version = "1.10.0", features = ["v4"] }
+tokio = "1.40.0"
+async-trait = "0.1.83"
 serde = "1.0.209"
 serde_json = "1.0.127"
 test-case = "3.3.1"
 rand = "0.8.5"
 anyhow = "1.0.86"
 hex = "0.4.3"
-uuid = { version = "1.10.0", features = ["v4"] }
-tokio = "1.40.0"
-sled = "0.34.7"
+zeroize = "1.8.1"
+web3 = "0.19.0"
 aes-gcm = "0.10.3"
 sha3 = "0.10.8"
 secp256k1 = { version = "0.20.3", features = ["rand"] }
-tiny-bip39 = "1.0.0"
-zeroize = "1.8.1"
-async-trait = "0.1.83"
 hdkey = "0.0.5"
+sled = "0.34.7"
+ratatui = "0.28.0"
+bip39 = { version = "2.0.0", features = ["rand", "serde", "zeroize"] }
+
+
+

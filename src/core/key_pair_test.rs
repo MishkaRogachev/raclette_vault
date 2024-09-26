@@ -4,10 +4,10 @@ mod tests {
     use regex::Regex;
     use crate::core::{key_pair, seed_phrase};
 
-    #[test_case(bip39::MnemonicType::Words12)]
-    #[test_case(bip39::MnemonicType::Words24)]
-    fn test_generate_keypair_from_seed_phrase(mtype: bip39::MnemonicType) -> anyhow::Result<()> {
-        let seed_phrase = seed_phrase::SeedPhrase::generate(mtype);
+    #[test_case(seed_phrase::WordCount::Words12)]
+    #[test_case(seed_phrase::WordCount::Words24)]
+    fn test_generate_keypair_from_seed_phrase(word_count: seed_phrase::WordCount) -> anyhow::Result<()> {
+        let seed_phrase = seed_phrase::SeedPhrase::generate(word_count)?;
         let keypair = key_pair::KeyPair::from_seed(seed_phrase.to_seed(""))?;
 
         assert!(keypair.validate().is_ok(), "Invalid keypair");

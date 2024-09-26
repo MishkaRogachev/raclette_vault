@@ -8,7 +8,7 @@ use ratatui::{
 };
 use zeroize::Zeroizing;
 
-use crate::core::seed_phrase::SeedPhrase;
+use crate::core::seed_phrase::{WordCount, SeedPhrase};
 use crate::tui::app::{AppCommand, AppScreen};
 use crate::tui::widgets::{buttons, mnemonic};
 
@@ -22,6 +22,7 @@ const INVALID_SEED_PHRASE: &str = "Your seed phrase is incorrect!";
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     seed_phrase: Option<SeedPhrase>,
+    word_count: WordCount,
 
     mnemonic_words: mnemonic::MnemonicWords,
     back_button: buttons::Button,
@@ -30,7 +31,7 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>, words: Vec<Zeroizing<String>>) -> Self {
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, words: Vec<Zeroizing<String>>, word_count: WordCount) -> Self {
         let seed_phrase = match SeedPhrase::from_words(words.iter().map(
             |w| w.to_string()).collect()) {
             Ok(seed_phrase) => Some(seed_phrase),
@@ -52,6 +53,7 @@ impl Screen {
         Self {
             command_tx,
             seed_phrase,
+            word_count,
             mnemonic_words,
             back_button,
             reveal_button,
@@ -65,14 +67,9 @@ impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         if let Some(()) = self.back_button.handle_event(&event) {
             let words = self.mnemonic_words.words.clone();
-            let mtype = match words.len() {
-                12 => bip39::MnemonicType::Words12,
-                24 => bip39::MnemonicType::Words24,
-                _ => unreachable!(),
-            };
             let index = words.len() - 1;
             let import_screen = Box::new(super::account_import_words::Screen::new(
-                self.command_tx.clone(), mtype, words, index, false));
+                self.command_tx.clone(), self.word_count, words, index, false));
             self.command_tx.send(AppCommand::SwitchScreen(import_screen)).unwrap();
             return Ok(());
         }

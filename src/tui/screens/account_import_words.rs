@@ -8,6 +8,7 @@ use ratatui::{
 };
 use zeroize::Zeroizing;
 
+use crate::core::seed_phrase::WordCount;
 use crate::tui::{app::{AppCommand, AppScreen}, widgets::{bars, buttons, focus::{self, Focusable}, inputs}};
 
 const IMPORT_WIDTH: u16 = 80;
@@ -22,7 +23,7 @@ const LABEL_TEXT: &str = "Enter word";
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
-    mtype: bip39::MnemonicType,
+    word_count: WordCount,
     words: Vec<Zeroizing<String>>,
     index: usize,
 
@@ -34,8 +35,8 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn new(command_tx: mpsc::Sender<AppCommand>, mtype: bip39::MnemonicType, words: Vec<Zeroizing<String>>, index: usize, revealed: bool) -> Self {
-        let bar = bars::HProgress::new(0, mtype.word_count() as u64, index as u64);
+    pub fn new(command_tx: mpsc::Sender<AppCommand>, word_count: WordCount, words: Vec<Zeroizing<String>>, index: usize, revealed: bool) -> Self {
+        let bar = bars::HProgress::new(0, word_count as u64, index as u64);
         let mut input = inputs::Input::new("Enter word").masked();
         let back_button = buttons::Button::new("Back", Some('b'));
         let mut reveal_button = buttons::SwapButton::new(
@@ -59,7 +60,7 @@ impl Screen {
 
         Self {
             command_tx,
-            mtype,
+            word_count,
             words,
             index,
             bar,
@@ -84,13 +85,13 @@ impl AppScreen for Screen {
                 words.push(Zeroizing::new(word.to_string()));
             }
 
-            if self.index + 1 == self.mtype.word_count() {
+            if self.index + 1 == self.word_count as usize {
                 let finalize_screen = Box::new(super::account_import_finalize::Screen::new(
-                    self.command_tx.clone(), words));
+                    self.command_tx.clone(), words, self.word_count));
                 self.command_tx.send(AppCommand::SwitchScreen(finalize_screen)).unwrap();
             } else {
                 let import_screen = Box::new(super::account_import_words::Screen::new(
-                    self.command_tx.clone(), self.mtype, words, self.index + 1, revealed));
+                    self.command_tx.clone(), self.word_count, words, self.index + 1, revealed));
                 self.command_tx.send(AppCommand::SwitchScreen(import_screen)).unwrap();
             }
         };
@@ -109,7 +110,7 @@ impl AppScreen for Screen {
         if let Some(()) = self.back_button.handle_event(&event) {
             if self.index > 0 {
                 let import_screen = Box::new(super::account_import_words::Screen::new(
-                    self.command_tx.clone(), self.mtype, self.words.clone(), self.index - 1, revealed));
+                    self.command_tx.clone(), self.word_count, self.words.clone(), self.index - 1, revealed));
                 self.command_tx.send(AppCommand::SwitchScreen(import_screen)).unwrap();
                 return Ok(());
             }

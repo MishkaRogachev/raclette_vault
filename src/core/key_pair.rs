@@ -1,5 +1,4 @@
 use std::ops::Deref;
-use bip39::Seed;
 use secp256k1::Secp256k1;
 use zeroize::Zeroizing;
 
@@ -19,11 +18,11 @@ pub struct KeyPair {
 }
 
 impl KeyPair {
-    pub fn from_seed(seed: Seed) -> anyhow::Result<Self> {
+    pub fn from_seed(seed: [u8; 64]) -> anyhow::Result<Self> {
         let secp = Secp256k1::new();
 
         // Derive the extended private key from the seed
-        let hd_key = hdkey::HDKey::from_master_seed(seed.as_bytes(), None)?;
+        let hd_key = hdkey::HDKey::from_master_seed(&seed, None)?;
         let derived_xprv = hd_key.derive(BIP44_ETH_DERIVATION_PATH)?;
 
         // Extract the private key from the derived key

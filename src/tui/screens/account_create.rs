@@ -7,7 +7,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::core::seed_phrase::SeedPhrase;
+use crate::core::seed_phrase::{SeedPhrase, WordCount};
 use crate::tui::app::{AppCommand, AppScreen};
 use crate::tui::widgets::{buttons, mnemonic};
 
@@ -57,11 +57,8 @@ impl Screen {
 impl AppScreen for Screen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         if let Some(is_on) = self.word_cnt_switch.handle_event(&event) {
-            self.seed_phrase.switch_mnemonic_type(if is_on == 1 {
-                bip39::MnemonicType::Words24
-            } else {
-                bip39::MnemonicType::Words12
-            });
+            self.seed_phrase = SeedPhrase::generate(if is_on == 1 {
+                WordCount::Words24 } else { WordCount::Words12 })?;
             self.mnemonic_words.words = self.seed_phrase.get_words_zeroizing();
             return Ok(());
         }

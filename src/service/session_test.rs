@@ -1,16 +1,15 @@
 #[cfg(test)]
 mod tests {
     use test_case::{test_matrix, test_case};
-    use bip39::MnemonicType;
-    use crate::core::{key_pair::KeyPair, seed_phrase::SeedPhrase};
+    use crate::core::{key_pair::KeyPair, seed_phrase::{WordCount, SeedPhrase}};
     use super::super::session::Session;
 
     #[test_matrix(
-        [MnemonicType::Words12, MnemonicType::Words24],
+        [WordCount::Words12, WordCount::Words24],
         ["12345678", ""]
     )]
-    fn test_session_flow(mtype: bip39::MnemonicType, password: &str) -> anyhow::Result<()> {
-        let seed_phrase = SeedPhrase::generate(mtype);
+    fn test_session_flow(word_count: WordCount, password: &str) -> anyhow::Result<()> {
+        let seed_phrase = SeedPhrase::generate(word_count)?;
         let keypair = KeyPair::from_seed(seed_phrase.to_seed(""))?;
         keypair.validate()?;
 
@@ -47,10 +46,10 @@ mod tests {
         Ok(())
     }
 
-    #[test_case(bip39::MnemonicType::Words12)]
-    #[test_case(bip39::MnemonicType::Words24)]
-    fn test_restore_from_seed_phrase(mtype: bip39::MnemonicType) -> anyhow::Result<()> {
-        let seed_phrase = SeedPhrase::generate(mtype);
+    #[test_case(WordCount::Words12)]
+    #[test_case(WordCount::Words24)]
+    fn test_restore_from_seed_phrase(word_count: WordCount) -> anyhow::Result<()> {
+        let seed_phrase = SeedPhrase::generate(word_count)?;
         let keypair = KeyPair::from_seed(seed_phrase.to_seed(""))?;
         keypair.validate()?;
 

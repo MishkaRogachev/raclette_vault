@@ -8,7 +8,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::{core::seed_phrase::SeedPhrase, service::session::Session};
+use crate::{core::seed_phrase::{WordCount, SeedPhrase}, service::session::Session};
 use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
 
 const WELCOME_WIDTH: u16 = 80;
@@ -77,7 +77,7 @@ impl AppScreen for Screen {
                     return Ok(());
                 }
                 if let Some(()) = create_button.handle_event(&event) {
-                    let seed_phrase = SeedPhrase::generate(bip39::MnemonicType::Words12);
+                    let seed_phrase = SeedPhrase::generate(WordCount::Words12)?;
                     let create_screen = Box::new(super::account_create::Screen::new(self.command_tx.clone(), seed_phrase));
                     self.command_tx.send(AppCommand::SwitchScreen(create_screen)).unwrap();
                     return Ok(());

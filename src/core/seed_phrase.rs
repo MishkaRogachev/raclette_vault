@@ -1,27 +1,30 @@
-use bip39::{Language, Mnemonic, MnemonicType, Seed};
+use bip39::Mnemonic;
 use zeroize::Zeroizing;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum WordCount {
+    Words12 = 12,
+    Words18 = 18,
+    Words24 = 24,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct SeedPhrase {
     pub mnemonic: Mnemonic,
 }
 
 impl SeedPhrase {
-    pub fn generate(mtype: MnemonicType) -> Self {
-        let mnemonic = Mnemonic::new(mtype, Language::English);
-        Self { mnemonic }
+    pub fn generate(word_count: WordCount) -> anyhow::Result<Self> {
+        let mnemonic = Mnemonic::generate(word_count as usize)?;
+        Ok(Self { mnemonic })
     }
 
-    pub fn switch_mnemonic_type(&mut self, mtype: MnemonicType) {
-        self.mnemonic = Mnemonic::new(mtype, Language::English);
-    }
-
-    pub fn to_seed(&self, password: &str) -> Seed {
-        Seed::new(&self.mnemonic, password)
+    pub fn to_seed(&self, password: &str) -> [u8; 64] {
+        self.mnemonic.to_seed(password)
     }
 
     pub fn from_string(s: &str) -> anyhow::Result<Self> {
-        let mnemonic = Mnemonic::from_phrase(s, Language::English)?;
+        let mnemonic = Mnemonic::parse(s)?;
         Ok(Self { mnemonic })
     }
 
@@ -35,11 +38,5 @@ impl SeedPhrase {
 
     pub fn get_words_zeroizing(&self) -> Vec<Zeroizing<String>> {
         self.get_words().iter().map(|w| Zeroizing::new(w.clone())).collect()
-    }
-}
-
-impl PartialEq for SeedPhrase {
-    fn eq(&self, other: &Self) -> bool {
-        self.mnemonic.entropy() == other.mnemonic.entropy()
     }
 }
