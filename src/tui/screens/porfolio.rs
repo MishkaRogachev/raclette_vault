@@ -5,10 +5,9 @@ use ratatui::{
     style::{Color, Style, Stylize},
     widgets::Paragraph, Frame
 };
-use web3::types::U256;
 
-use crate::{core::{chain::Chain, provider::{Balance, Provider}}, service::session::Session};
-use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
+use crate::{core::{chain::Chain, provider::Provider}, service::session::Session};
+use crate::tui::{widgets::{buttons, account}, app::{AppCommand, AppScreen}};
 
 const PORFOLIO_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 2;
@@ -21,7 +20,7 @@ pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     session: Session,
     provider: Provider,
-    balance: Option<Balance>,
+    account: account::Account,
 
     quit_button: buttons::Button,
     manage_button: buttons::MenuButton,
@@ -35,6 +34,7 @@ impl Screen {
         let provider = Provider::new(&infura_token, chain)
             .expect("Failed to create provider");
 
+        let account = account::Account::new(session.account);
         let quit_button = buttons::Button::new("Quit", Some('q'));
         let mut access_mnemonic = buttons::Button::new("Access mnemonic", Some('a'));
         if session.get_seed_phrase().is_err() {
@@ -49,7 +49,7 @@ impl Screen {
             command_tx,
             session,
             provider,
-            balance: None,
+            account,
             quit_button,
             manage_button,
         }
@@ -85,11 +85,11 @@ impl AppScreen for Screen {
     }
 
     async fn update(&mut self) {
-        if self.balance.is_none() {
+        if self.account.balance.is_none() {
             let balance = self.provider.get_eth_balance(self.session.account)
                 .await
                 .expect("Failed to get balance");
-            self.balance = Some(balance);
+            self.account.balance = Some(balance);
         }
     }
 
@@ -122,20 +122,8 @@ impl AppScreen for Screen {
             .alignment(Alignment::Center);
         frame.render_widget(intro_text, content_layout[1]);
 
-        // TODO: Replace with account widget
-        let account_text = if let Some(balance) = &self.balance {
-            Paragraph::new(
-                format!("{}\tBalance: {}", self.session.account.to_string(), balance.to_string()))
-                .style(Style::default().fg(Color::Yellow).bold())
-                .alignment(Alignment::Center)
-        } else {
-            Paragraph::new(
-                format!("{}\tBalance: ---", self.session.account.to_string()))
-                .style(Style::default().fg(Color::Yellow).bold())
-                .alignment(Alignment::Center)
-        };
-        frame.render_widget(account_text, content_layout[3]);
-
+        // TODO: Several accounts
+        self.account.render(frame, content_layout[3]);
 
         let buttons_row = Layout::default()
             .direction(Direction::Horizontal)
