@@ -17,7 +17,8 @@ mod tests {
         let provider = Provider::new(&infura_token, Chain::EthereumMainnet)?;
 
         let balance = provider.get_eth_balance(account).await?;
-        assert_ne!(balance, 0.into());
+        assert_eq!(balance.currency, "ETH");
+        assert_ne!(balance.value, 0.0);
 
         Ok(())
     }

@@ -7,7 +7,7 @@ use ratatui::{
 };
 use web3::types::U256;
 
-use crate::{core::{chain::Chain, provider::Provider}, service::session::Session};
+use crate::{core::{chain::Chain, provider::{Balance, Provider}}, service::session::Session};
 use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
 
 const PORFOLIO_WIDTH: u16 = 80;
@@ -21,8 +21,7 @@ pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     session: Session,
     provider: Provider,
-    chain: Chain,
-    balance: Option<U256>,
+    balance: Option<Balance>,
 
     quit_button: buttons::Button,
     manage_button: buttons::MenuButton,
@@ -50,7 +49,6 @@ impl Screen {
             command_tx,
             session,
             provider,
-            chain,
             balance: None,
             quit_button,
             manage_button,
@@ -125,16 +123,19 @@ impl AppScreen for Screen {
         frame.render_widget(intro_text, content_layout[1]);
 
         // TODO: Replace with account widget
-        let blance = if let Some(balance) = self.balance {
-            balance
+        let account_text = if let Some(balance) = &self.balance {
+            Paragraph::new(
+                format!("{}\tBalance: {}", self.session.account.to_string(), balance.to_string()))
+                .style(Style::default().fg(Color::Yellow).bold())
+                .alignment(Alignment::Center)
         } else {
-            U256::zero()
+            Paragraph::new(
+                format!("{}\tBalance: ---", self.session.account.to_string()))
+                .style(Style::default().fg(Color::Yellow).bold())
+                .alignment(Alignment::Center)
         };
-        let account_text = Paragraph::new(
-            format!("ETH:{}; Balance: {}", self.session.account.to_string(), blance))
-            .style(Style::default().fg(Color::Yellow).bold())
-            .alignment(Alignment::Center);
         frame.render_widget(account_text, content_layout[3]);
+
 
         let buttons_row = Layout::default()
             .direction(Direction::Horizontal)
