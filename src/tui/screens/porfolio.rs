@@ -95,7 +95,7 @@ impl AppScreen for Screen {
         }
 
         if let Some(()) = self.receive_button.handle_event(&event) {
-            self.popup = Some(Box::new(super::receive::Screen::new(self.session.account)));
+            self.popup = Some(Box::new(super::super::popups::receive::Popup::new(self.session.account)));
             return Ok(true);
         }
 

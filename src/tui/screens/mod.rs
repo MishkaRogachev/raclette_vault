@@ -8,7 +8,6 @@ mod account_import_words;
 mod account_import_finalize;
 // Main
 mod porfolio;
-mod receive;
 mod account_delete;
 mod mnemonic_access;
 mod mnemonic_delete;

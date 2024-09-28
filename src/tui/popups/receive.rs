@@ -1,4 +1,5 @@
 use copypasta::{ClipboardContext, ClipboardProvider};
+use qrcode::render::unicode;
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -16,13 +17,13 @@ const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const TITLE: &str = "Receive Crypto";
 
-pub struct Screen {
+pub struct Popup {
     address: web3::types::Address,
     back_button: buttons::Button,
     copy_button: buttons::Button
 }
 
-impl Screen {
+impl Popup {
     pub fn new(address: web3::types::Address) -> Self {
         let back_button = buttons::Button::new("Back", Some('b'));
         let copy_button = buttons::Button::new("Copy To Clipboard", Some('c'));
@@ -37,10 +38,19 @@ impl Screen {
     fn full_address(&self) -> String {
         format!("0x{}", hex::encode(self.address.as_bytes()))
     }
+
+    fn generate_qr_code(&self) -> String {
+        let qr_code = qrcode::QrCode::new(self.full_address()).unwrap();
+        qr_code
+            .render::<unicode::Dense1x2>()  // Use dense Unicode characters
+            .dark_color(unicode::Dense1x2::Dark)
+            .light_color(unicode::Dense1x2::Light)
+            .build()
+    }
 }
 
 #[async_trait::async_trait]
-impl AppScreen for Screen {
+impl AppScreen for Popup {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(()) = self.back_button.handle_event(&event) {
             return Ok(true);
@@ -76,6 +86,7 @@ impl AppScreen for Screen {
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
+                Constraint::Length(1), // Margin
                 Constraint::Length(ACCOUNT_HEIGHT),
                 Constraint::Fill(0), // Fill height for QR code
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
@@ -86,9 +97,13 @@ impl AppScreen for Screen {
         let address_paragraph = Paragraph::new(address_text)
             .style(Style::default().fg(Color::Yellow))
             .alignment(Alignment::Center);
-        frame.render_widget(address_paragraph, content_layout[0]);
+        frame.render_widget(address_paragraph, content_layout[1]);
 
-        // TODO: QR Code
+        let qr_code_string = self.generate_qr_code();
+        let qr_code_paragraph = Paragraph::new(qr_code_string)
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(Alignment::Center);
+        frame.render_widget(qr_code_paragraph, content_layout[2]);
 
         let buttons_layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -96,7 +111,7 @@ impl AppScreen for Screen {
                 Constraint::Percentage(30),
                 Constraint::Percentage(70),
             ])
-            .split(content_layout[2]);
+            .split(content_layout[3]);
 
         self.back_button.render(frame, buttons_layout[0]);
         self.copy_button.render(frame, buttons_layout[1]);
