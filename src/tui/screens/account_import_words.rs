@@ -104,6 +104,7 @@ impl AppScreen for Screen {
                 }
             }
             self.next_button.disabled = self.input.value.is_empty();
+            return Ok(false);
         }
 
         if let Some(()) = self.back_button.handle_event(&event) {
@@ -163,7 +164,7 @@ impl AppScreen for Screen {
 
         self.bar.render(frame, content_layout[2]);
 
-        let label = Paragraph::new(LABEL_TEXT)
+        let label = Paragraph::new(format!("{} {}", LABEL_TEXT, self.index + 1))
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
         frame.render_widget(label, content_layout[4]);
