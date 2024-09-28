@@ -10,7 +10,7 @@ use ratatui::{
 use crate::{core::seed_phrase::{WordCount, SeedPhrase}, service::session::Session};
 use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
 
-const LOGO_HALF_HEIGHT: u16 = 8;
+const LOGO_HEIGHT: u16 = 20;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
@@ -92,9 +92,10 @@ impl AppScreen for Screen {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Min(0), // Fill height
-                Constraint::Fill(LOGO_HALF_HEIGHT), // Logo
+                Constraint::Max(LOGO_HEIGHT),
                 Constraint::Length(WARNING_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Min(0), // Fill height
             ])
             .split(area);
 
@@ -113,27 +114,31 @@ impl AppScreen for Screen {
                 let buttons_row = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([
-                    Constraint::Percentage(30),
-                    Constraint::Percentage(70),
+                    Constraint::Fill(0),
+                    Constraint::Length(30),
+                    Constraint::Length(30),
+                    Constraint::Fill(0),
                 ])
                 .split(content_layout[3]);
 
-                self.quit_button.render(frame, buttons_row[0]);
-                login_button.render(frame, buttons_row[1]);
+                self.quit_button.render(frame, buttons_row[1]);
+                login_button.render(frame, buttons_row[2]);
             },
             ProcessActions::Create { import_button, create_button } => {
                 let buttons_row = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([
-                    Constraint::Percentage(30),
-                    Constraint::Percentage(35),
-                    Constraint::Percentage(35),
+                    Constraint::Fill(0),
+                    Constraint::Length(20),
+                    Constraint::Length(20),
+                    Constraint::Length(20),
+                    Constraint::Fill(0),
                 ])
                 .split(content_layout[3]);
                 
-                self.quit_button.render(frame, buttons_row[0]);
-                import_button.render(frame, buttons_row[1]);
-                create_button.render(frame, buttons_row[2]);
+                self.quit_button.render(frame, buttons_row[1]);
+                import_button.render(frame, buttons_row[2]);
+                create_button.render(frame, buttons_row[3]);
             }
         }
     }

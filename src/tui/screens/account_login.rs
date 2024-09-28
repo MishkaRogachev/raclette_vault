@@ -10,16 +10,15 @@ use zeroize::Zeroizing;
 use crate::service::session::Session;
 use crate::tui::{widgets::{focus::{self, Focusable}, buttons, inputs}, app::{AppCommand, AppScreen}};
 
+const MAX_LOGIN_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
-const INPUT_LABEL_HEIGHT: u16 = 1;
 const INPUT_HEIGHT: u16 = 3;
 const ERROR_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const MAX_PASSWORD_ATTEMPTS: u8 = 3;
 
-const INTRO_TEXT: &str = "Login into existing account";
-const LABEL_TEXT: &str = "Enter password";
+const INTRO_TEXT: &str = "Login into existing account. Please, enter your password.";
 const INCORRECT_PASSWORD_TEXT: &str = "Incorrect password. Attempts left";
 
 pub struct Screen {
@@ -118,39 +117,35 @@ impl AppScreen for Screen {
     async fn update(&mut self) {}
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
+        let updated_width = area.width.min(MAX_LOGIN_WIDTH);
+        let centered_area = Rect { x: area.x + (area.width - updated_width) / 2, width: updated_width, ..area };
+
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(INPUT_LABEL_HEIGHT),
                 Constraint::Length(INPUT_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(ERROR_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
-                Constraint::Min(0), // Fill height
             ])
-            .split(area);
+            .split(centered_area);
 
         let intro_text = Paragraph::new(INTRO_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())
             .alignment(Alignment::Center);
         frame.render_widget(intro_text, content_layout[1]);
 
-        let label = Paragraph::new(LABEL_TEXT)
-            .style(Style::default().fg(Color::Yellow).bold())
-            .alignment(Alignment::Center);
-        frame.render_widget(label, content_layout[3]);
-
-        self.input.render(frame, content_layout[4]);
+        self.input.render(frame, content_layout[3]);
 
         if let Some(error_string) = &self.pass_error {
             let error_text = Paragraph::new(error_string.clone())
                 .style(Style::default().fg(Color::Red).bold())
                 .alignment(Alignment::Center);
-            frame.render_widget(error_text, content_layout[6]);
+            frame.render_widget(error_text, content_layout[5]);
         }
 
         let buttons_row = Layout::default()
@@ -160,7 +155,7 @@ impl AppScreen for Screen {
                 Constraint::Percentage(30),
                 Constraint::Percentage(40),
             ])
-            .split(content_layout[8]);
+            .split(content_layout[7]);
 
         self.back_button.render(frame, buttons_row[0]);
         self.reveal_button.render(frame, buttons_row[1]);

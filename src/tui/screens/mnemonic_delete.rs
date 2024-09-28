@@ -9,6 +9,7 @@ use ratatui::{
 use crate::{core::seed_phrase::SeedPhrase, service::session::Session};
 use crate::tui::{widgets::{focus::{self, Focusable}, buttons, inputs}, app::{AppCommand, AppScreen}};
 
+const MAX_MNEM_DELETE_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
 const INPUT_LABEL_HEIGHT: u16 = 1;
 const INPUT_HEIGHT: u16 = 3;
@@ -113,6 +114,9 @@ impl AppScreen for Screen {
     async fn update(&mut self) {}
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
+        let updated_width = area.width.min(MAX_MNEM_DELETE_WIDTH);
+        let centered_area = Rect { x: area.x + (area.width - updated_width) / 2, width: updated_width, ..area };
+
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -125,9 +129,8 @@ impl AppScreen for Screen {
                 Constraint::Length(ERROR_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
-                Constraint::Min(0), // Fill height
             ])
-            .split(area);
+            .split(centered_area);
 
         let intro_text = Paragraph::new(INTRO_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())

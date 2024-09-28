@@ -12,11 +12,12 @@ use crate::core::seed_phrase::{WordCount, SeedPhrase};
 use crate::tui::app::{AppCommand, AppScreen};
 use crate::tui::widgets::{buttons, mnemonic};
 
+const MAX_IMPORT_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 2;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const VALID_SEED_PHRASE: &str = "Your seed phrase was sucesfully imported! You may access it later in the app.";
-const INVALID_SEED_PHRASE: &str = "Your seed phrase is incorrect!";
+const INVALID_SEED_PHRASE: &str = "Your seed phrase is not correct! Please go back and fix it!";
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
@@ -94,6 +95,9 @@ impl AppScreen for Screen {
     async fn update(&mut self) {}
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
+        let updated_width = area.width.min(MAX_IMPORT_WIDTH);
+        let centered_area = Rect { x: area.x + (area.width - updated_width) / 2, width: updated_width, ..area };
+
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -101,7 +105,7 @@ impl AppScreen for Screen {
                 Constraint::Length(mnemonic::MNEMONIC_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
             ])
-            .split(area);
+            .split(centered_area);
 
             if self.seed_phrase.is_some() {
                 let outro_text = Paragraph::new(VALID_SEED_PHRASE)

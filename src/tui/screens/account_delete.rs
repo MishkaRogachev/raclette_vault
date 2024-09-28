@@ -10,6 +10,7 @@ use ratatui::{
 use crate::service::session::Session;
 use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
 
+const MAX_DELETE_WIDTH: u16 = 80;
 const SKULL_HEIGHT: u16 = 20;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
@@ -56,6 +57,9 @@ impl AppScreen for Screen {
     async fn update(&mut self) {}
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
+        let updated_width = area.width.min(MAX_DELETE_WIDTH);
+        let centered_area = Rect { x: area.x + (area.width - updated_width) / 2, width: updated_width, ..area };
+
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -63,9 +67,8 @@ impl AppScreen for Screen {
                 Constraint::Length(SKULL_HEIGHT),
                 Constraint::Length(WARNING_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
-                Constraint::Min(0), // Fill height
             ])
-            .split(area);
+            .split(centered_area);
 
         let skull = Paragraph::new(ascii::SKULL)
             .style(Style::default().fg(Color::Red))

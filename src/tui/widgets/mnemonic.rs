@@ -42,10 +42,10 @@ impl MnemonicWords {
 
         let columns_layout = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints(vec![Constraint::Percentage(100 / column_count as u16); column_count])
+            .constraints(vec![Constraint::Length(60 / column_count as u16); column_count])
             .split(content_layout[1]);
 
-        for (col_idx, column_area) in columns_layout.iter().enumerate() {
+        for col_idx in 0..column_count {
             let start_idx = col_idx * words_per_column;
             let end_idx = std::cmp::min(start_idx + words_per_column, word_count);
             let words_in_column = &self.words[start_idx..end_idx];
@@ -53,7 +53,7 @@ impl MnemonicWords {
             let word_layout = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints(vec![Constraint::Length(word_height); words_in_column.len()])
-                .split(*column_area);
+                .split(columns_layout[col_idx]);
 
             for (i, word_area) in word_layout.iter().enumerate() {
                 let word = if self.masked {
