@@ -27,4 +27,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: ${{ matrix.os }}-binary
-        path: target/release/your_binary_name${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+        path: target/release/raclette_vault${{ matrix.os == 'windows-latest' && '.exe' || '' }}
