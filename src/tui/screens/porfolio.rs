@@ -8,7 +8,8 @@ use ratatui::{
 use crate::{core::{chain::Chain, provider::Provider}, service::session::Session};
 use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
 
-const PORFOLIO_WIDTH: u16 = 80;
+const POPUP_WIDTH: u16 = 60;
+const POPUP_HEIGHT: u16 = 30;
 const SWITCH_HEIGHT: u16 = 3;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
@@ -150,15 +151,6 @@ impl AppScreen for Screen {
     }
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
-        let horizontal_padding = (area.width.saturating_sub(PORFOLIO_WIDTH)) / 2;
-
-        let centered_area = Rect {
-            x: horizontal_padding,
-            y: area.y,
-            width: PORFOLIO_WIDTH,
-            height: area.height,
-        };
-
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -166,7 +158,7 @@ impl AppScreen for Screen {
                 Constraint::Fill(0), // Fill height for mode
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
             ])
-            .split(centered_area);
+            .split(area);
 
         self.mode_switch.render(frame, content_layout[0]);
 
@@ -190,7 +182,16 @@ impl AppScreen for Screen {
         self.manage_button.render(frame, buttons_row[3]);
 
         if let Some(popup) = &mut self.popup {
-            popup.render(frame, area);
+            let popup_h_padding = area.width.saturating_sub(POPUP_WIDTH) / 2;
+            let popup_height = POPUP_HEIGHT.min(area.height);
+            let popup_v_padding = area.height.saturating_sub(popup_height) / 2;
+            let popup_area = Rect {
+                x: area.x + popup_h_padding,
+                y: area.y + popup_v_padding,
+                width: POPUP_WIDTH,
+                height: popup_height,
+            };
+            popup.render(frame, popup_area);
         }
     }
 }

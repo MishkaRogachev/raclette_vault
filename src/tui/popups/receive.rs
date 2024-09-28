@@ -10,8 +10,6 @@ use ratatui::{
 
 use crate::tui::{widgets::buttons, app::AppScreen};
 
-const RECEIVE_WIDTH: u16 = 60;
-const V_PADDING: u16 = 2;
 const ACCOUNT_HEIGHT: u16 = 2;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
@@ -65,22 +63,14 @@ impl AppScreen for Popup {
     async fn update(&mut self) {}
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
-        let horizontal_padding = (area.width.saturating_sub(RECEIVE_WIDTH)) / 2;
-
-        let popup_area = Rect {
-            x: horizontal_padding,
-            y: area.y + V_PADDING,
-            width: RECEIVE_WIDTH,
-            height: area.height - V_PADDING * 2,
-        };
-        frame.render_widget(Clear, popup_area);
+        frame.render_widget(Clear, area);
 
         let block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Yellow))
             .title(TITLE);
-        let inner_area = block.inner(popup_area);
-        frame.render_widget(block, popup_area);
+        let inner_area = block.inner(area);
+        frame.render_widget(block, area);
 
         let content_layout = Layout::default()
             .direction(Direction::Vertical)

@@ -8,6 +8,9 @@ use ratatui::{
 
 use super::screens::welcome;
 
+pub const MIN_APP_WIDTH: u16 = 60;
+pub const MAX_APP_WIDTH: u16 = 120;
+
 #[async_trait::async_trait]
 pub trait AppScreen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<bool>;
@@ -63,6 +66,16 @@ impl AppScreen for App {
     }
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
-        self.current_screen.render(frame, area);
+        let app_width = area.width.clamp(MIN_APP_WIDTH, MAX_APP_WIDTH);
+        let horizontal_padding = (area.width.saturating_sub(app_width)) / 2;
+
+        let app_area = Rect {
+            x: horizontal_padding,
+            y: area.y,
+            width: app_width,
+            height: area.height,
+        };
+
+        self.current_screen.render(frame, app_area);
     }
 }

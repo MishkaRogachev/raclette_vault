@@ -5,10 +5,11 @@ use ratatui::{
     prelude::CrosstermBackend, Terminal
 };
 
-use super::app::{App, AppScreen};
+use super::app::{App, AppScreen, MIN_APP_WIDTH};
 
-const MIN_TERMINAL_WIDTH: u16 = 80;
 const MIN_TERMINAL_HEIGHT: u16 = 13;
+
+const TERMINAL_TOO_SMALL: &str = "Terminal window is too small";
 
 pub struct Tui {
     shutdown_handle: Arc<AtomicBool>,
@@ -38,10 +39,22 @@ impl Tui {
                 self.app.update().await;
                 terminal.draw(|frame| {
                     let area = frame.area();
-                    if area.width < MIN_TERMINAL_WIDTH || area.height < MIN_TERMINAL_HEIGHT {
-                        let warning = ratatui::widgets::Paragraph::new("Terminal window is too small")
+                    if area.width < MIN_APP_WIDTH || area.height < MIN_TERMINAL_HEIGHT {
+                        let layout = ratatui::layout::Layout::default()
+                            .direction(ratatui::layout::Direction::Vertical)
+                            .constraints([
+                                ratatui::layout::Constraint::Percentage(50),
+                                ratatui::layout::Constraint::Length(1),
+                                ratatui::layout::Constraint::Percentage(50),
+                            ])
+                            .split(area);
+
+                        let warning = ratatui::widgets::Paragraph::new(
+                            TERMINAL_TOO_SMALL)
                             .alignment(ratatui::layout::Alignment::Center);
-                        frame.render_widget(warning, area);
+
+                        frame.render_widget(warning, layout[1]);
+
                     } else {
                         self.app.render(frame, frame.area());
                     }

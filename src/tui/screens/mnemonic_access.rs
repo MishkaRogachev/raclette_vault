@@ -11,7 +11,6 @@ use crate::{core::seed_phrase::SeedPhrase, service::session::Session};
 use crate::tui::app::{AppCommand, AppScreen};
 use crate::tui::widgets::{buttons, mnemonic};
 
-const ACCESS_MNEMONIC_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 2;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
 
@@ -82,16 +81,6 @@ impl AppScreen for Screen {
     async fn update(&mut self) {}
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
-        let area = frame.area();
-        let horizontal_padding = (area.width.saturating_sub(ACCESS_MNEMONIC_WIDTH)) / 2;
-
-        let centered_area = Rect {
-            x: horizontal_padding,
-            y: area.y,
-            width: ACCESS_MNEMONIC_WIDTH,
-            height: area.height,
-        };
-
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -101,7 +90,7 @@ impl AppScreen for Screen {
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
                 Constraint::Min(0), // Fill height
             ])
-            .split(centered_area);
+            .split(area);
 
         let intro_text = Paragraph::new(INTRO_TEXT)
             .style(Style::default().fg(Color::Yellow).bold())

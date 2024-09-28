@@ -10,7 +10,6 @@ use ratatui::{
 use crate::{core::seed_phrase::{WordCount, SeedPhrase}, service::session::Session};
 use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
 
-const WELCOME_WIDTH: u16 = 80;
 const LOGO_HALF_HEIGHT: u16 = 8;
 const WARNING_HEIGHT: u16 = 1;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
@@ -89,15 +88,6 @@ impl AppScreen for Screen {
     async fn update(&mut self) {}
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
-        let horizontal_padding = (area.width.saturating_sub(WELCOME_WIDTH)) / 2;
-
-        let centered_area = Rect {
-            x: horizontal_padding,
-            y: area.y,
-            width: WELCOME_WIDTH,
-            height: area.height,
-        };
-
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -106,7 +96,7 @@ impl AppScreen for Screen {
                 Constraint::Length(WARNING_HEIGHT),
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
             ])
-            .split(centered_area);
+            .split(area);
 
         let logo = Paragraph::new(ascii::BIG_LOGO)
             .style(Style::default().fg(Color::Yellow))
