@@ -1,6 +1,5 @@
 
 use std::sync::mpsc;
-use web3::types::H160;
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -19,7 +18,7 @@ const BUTTONS_ROW_HEIGHT: u16 = 3;
 const WARNING_TEXT: &str = "Please don't use this wallet for real crypto!";
 
 enum ProcessActions {
-    Login { login_button: buttons::Button, account: H160 },
+    Login { login_button: buttons::Button, account: web3::types::Address },
     Create { import_button: buttons::Button, create_button: buttons::Button }
 }
 
@@ -56,10 +55,10 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(()) = self.quit_button.handle_event(&event) {
             self.command_tx.send(AppCommand::Quit).unwrap();
-            return Ok(());
+            return Ok(true);
         }
 
         match &mut self.process_actions {
@@ -67,24 +66,24 @@ impl AppScreen for Screen {
                 if let Some(()) = login_button.handle_event(&event) {
                     let login_screen = Box::new(super::account_login::Screen::new(self.command_tx.clone(), account.clone()));
                     self.command_tx.send(AppCommand::SwitchScreen(login_screen)).unwrap();
-                    return Ok(());
+                    return Ok(true);
                 }
             },
             ProcessActions::Create { import_button, create_button } => {
                 if let Some(()) = import_button.handle_event(&event) {
                     let import_screen = Box::new(super::account_import_start::Screen::new(self.command_tx.clone()));
                     self.command_tx.send(AppCommand::SwitchScreen(import_screen)).unwrap();
-                    return Ok(());
+                    return Ok(true);
                 }
                 if let Some(()) = create_button.handle_event(&event) {
                     let seed_phrase = SeedPhrase::generate(WordCount::Words12)?;
                     let create_screen = Box::new(super::account_create::Screen::new(self.command_tx.clone(), seed_phrase));
                     self.command_tx.send(AppCommand::SwitchScreen(create_screen)).unwrap();
-                    return Ok(());
+                    return Ok(true);
                 }
             }
         }
-        Ok(())
+        Ok(false)
     }
 
     async fn update(&mut self) {}

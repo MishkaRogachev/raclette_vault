@@ -61,7 +61,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         let scoped_event = focus::handle_scoped_event(&mut [&mut self.input], &event);
 
         let delete_action = || {
@@ -88,27 +88,27 @@ impl AppScreen for Screen {
                 _ => {}
             }
 
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(()) = self.back_button.handle_event(&event) {
             self.command_tx.send(AppCommand::SwitchScreen(Box::new(
                 super::mnemonic_access::Screen::new(self.command_tx.clone(), self.session.clone())
             ))).unwrap();
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(reveal) = self.reveal_button.handle_event(&event) {
             self.input.masked = !reveal;
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(()) = self.delete_button.handle_event(&event) {
             delete_action();
-            return Ok(());
+            return Ok(true);
         }
 
-        Ok(())
+        Ok(false)
     }
 
     async fn update(&mut self) {}

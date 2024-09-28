@@ -48,14 +48,14 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(is_on) = self.word_cnt_switch.handle_event(&event) {
             self.word_count = if is_on == 1 {
                 WordCount::Words24
             } else {
                 WordCount::Words12
             };
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(()) = self.back_button.handle_event(&event) {
@@ -63,7 +63,7 @@ impl AppScreen for Screen {
             self.command_tx
                 .send(AppCommand::SwitchScreen(welcome_screen))
                 .unwrap();
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(()) = self.continue_button.handle_event(&event) {
@@ -72,9 +72,9 @@ impl AppScreen for Screen {
             self.command_tx
                 .send(AppCommand::SwitchScreen(import_words_screen))
                 .unwrap();
-            return Ok(());
+            return Ok(true);
         }
-        Ok(())
+        Ok(false)
     }
 
     async fn update(&mut self) {}

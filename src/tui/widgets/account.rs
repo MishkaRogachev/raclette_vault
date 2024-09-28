@@ -1,4 +1,3 @@
-use web3::types::H160;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -9,12 +8,12 @@ use ratatui::{
 use crate::core::provider::Balance;
 
 pub struct Account {
-    pub address: H160,
+    pub address: web3::types::Address,
     pub balance: Option<Balance>,
 }
 
 impl Account {
-    pub fn new(address: H160) -> Self {
+    pub fn new(address: web3::types::Address) -> Self {
         Self {
             address,
             balance: None,

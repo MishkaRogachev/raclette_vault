@@ -54,7 +54,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         let scoped_event = focus::handle_scoped_event(
             &mut [&mut self.first_input, &mut self.second_input], &event);
 
@@ -74,6 +74,7 @@ impl AppScreen for Screen {
         if let Some(event) = scoped_event {
             if let focus::FocusableEvent::FocusFinished = event {
                 secure_action();
+                return Ok(true);
             }
         } else {
             if let Some(()) = self.back_button.handle_event(&event) {
@@ -82,7 +83,7 @@ impl AppScreen for Screen {
                 self.command_tx
                     .send(AppCommand::SwitchScreen(create_screeen))
                     .unwrap();
-                return Ok(());
+                return Ok(true);
             }
 
             if let Some(reveal) = self.reveal_button.handle_event(&event) {
@@ -92,10 +93,11 @@ impl AppScreen for Screen {
 
             if let Some(()) = self.save_button.handle_event(&event) {
                 secure_action();
+                return Ok(true);
             }
         }
 
-        Ok(())
+        Ok(false)
     }
 
     async fn update(&mut self) {

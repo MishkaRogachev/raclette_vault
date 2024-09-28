@@ -74,7 +74,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         let revealed = !self.input.masked;
         let next_action = |word: &str| {
             let mut words = self.words.clone();
@@ -100,11 +100,10 @@ impl AppScreen for Screen {
             if let focus::FocusableEvent::FocusFinished = event {
                 if !self.input.value.is_empty() {
                     next_action(&self.input.value);
+                    return Ok(true);
                 }
-                return Ok(());
             }
             self.next_button.disabled = self.input.value.is_empty();
-            return Ok(());
         }
 
         if let Some(()) = self.back_button.handle_event(&event) {
@@ -112,7 +111,7 @@ impl AppScreen for Screen {
                 let import_screen = Box::new(super::account_import_words::Screen::new(
                     self.command_tx.clone(), self.word_count, self.words.clone(), self.index - 1, revealed));
                 self.command_tx.send(AppCommand::SwitchScreen(import_screen)).unwrap();
-                return Ok(());
+                return Ok(true);
             }
             let welcome_screen = Box::new(super::welcome::Screen::new(self.command_tx.clone()));
             self.command_tx.send(AppCommand::SwitchScreen(welcome_screen)).unwrap();
@@ -120,13 +119,14 @@ impl AppScreen for Screen {
 
         if let Some(reveal) = self.reveal_button.handle_event(&event) {
             self.input.masked = !reveal;
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(()) = self.next_button.handle_event(&event) {
             next_action(&self.input.value);
+            return Ok(true);
         }
-        Ok(())
+        Ok(false)
     }
 
     async fn update(&mut self) {}

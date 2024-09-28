@@ -36,12 +36,12 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(()) = self.cancel_button.handle_event(&event) {
             let porfolio = Box::new(super::porfolio::Screen::new(
                 self.command_tx.clone(), self.session.clone()));
             self.command_tx.send(AppCommand::SwitchScreen(porfolio)).unwrap();
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(()) = self.delete_button.handle_event(&event) {
@@ -49,9 +49,9 @@ impl AppScreen for Screen {
             let welcome_screen = Box::new(super::welcome::Screen::new(
                 self.command_tx.clone()));
             self.command_tx.send(AppCommand::SwitchScreen(welcome_screen)).unwrap();
-            return Ok(());
+            return Ok(true);
         }
-        Ok(())
+        Ok(false)
     }
 
     async fn update(&mut self) {}

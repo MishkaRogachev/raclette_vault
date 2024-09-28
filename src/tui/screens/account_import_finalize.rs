@@ -64,19 +64,19 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(()) = self.back_button.handle_event(&event) {
             let words = self.mnemonic_words.words.clone();
             let index = words.len() - 1;
             let import_screen = Box::new(super::account_import_words::Screen::new(
                 self.command_tx.clone(), self.word_count, words, index, false));
             self.command_tx.send(AppCommand::SwitchScreen(import_screen)).unwrap();
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(reveal) = self.reveal_button.handle_event(&event) {
             self.mnemonic_words.masked = !reveal;
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(()) = self.secure_button.handle_event(&event) {
@@ -86,10 +86,10 @@ impl AppScreen for Screen {
                 self.command_tx
                     .send(AppCommand::SwitchScreen(secure_screeen))
                     .unwrap();
-                return Ok(());
+                return Ok(true);
             }
         }
-        Ok(())
+        Ok(false)
     }
 
     async fn update(&mut self) {}

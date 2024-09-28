@@ -54,18 +54,18 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(()) = self.back_button.handle_event(&event) {
             let portfolio_screen = Box::new(super::porfolio::Screen::new(self.command_tx.clone(), self.session.clone()));
             self.command_tx
                 .send(AppCommand::SwitchScreen(portfolio_screen))
                 .unwrap();
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(reveal) = self.reveal_button.handle_event(&event) {
             self.mnemonic_words.masked = !reveal;
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(()) = self.delete_button.handle_event(&event) {
@@ -74,9 +74,9 @@ impl AppScreen for Screen {
             self.command_tx
                 .send(AppCommand::SwitchScreen(delete_mnemonic_screen))
                 .unwrap();
-            return Ok(());
+            return Ok(true);
         }
-        Ok(())
+        Ok(false)
     }
 
     async fn update(&mut self) {}

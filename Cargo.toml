@@ -23,3 +23,4 @@ hdkey = "0.0.5"
 sled = "0.34.7"
 ratatui = "0.28.0"
 bip39 = { version = "2.0.0", features = ["rand", "serde", "zeroize"] }
+copypasta = "0.10.1"

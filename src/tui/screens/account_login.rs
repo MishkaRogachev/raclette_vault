@@ -64,7 +64,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         let scoped_event = focus::handle_scoped_event(&mut [&mut self.input], &event);
 
         let mut login_action = || {
@@ -93,27 +93,27 @@ impl AppScreen for Screen {
                 },
                 focus::FocusableEvent::FocusFinished => {
                     login_action();
+                    return Ok(true);
                 },
                 _ => {}
             }
-            return Ok(());
         }
 
         if let Some(()) = self.back_button.handle_event(&event) {
             let welcome_screen = Box::new(super::welcome::Screen::new(self.command_tx.clone()));
             self.command_tx.send(AppCommand::SwitchScreen(welcome_screen)).unwrap();
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(reveal) = self.reveal_button.handle_event(&event) {
             self.input.masked = !reveal;
-            return Ok(());
+            return Ok(true);
         }
 
         if let Some(()) = self.login_button.handle_event(&event) {
             login_action();
         }
-        Ok(())
+        Ok(false)
     }
 
     async fn update(&mut self) {}
