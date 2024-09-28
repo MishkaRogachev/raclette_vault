@@ -10,6 +10,7 @@ pub struct Balance {
     pub currency: String,
 }
 
+#[derive(Clone)]
 pub struct Provider {
     web3: Web3<Http>,
     chain: Chain,

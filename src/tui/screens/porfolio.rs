@@ -1,27 +1,23 @@
 use std::sync::mpsc;
 use ratatui::{
     crossterm::event::Event,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Style, Stylize},
-    widgets::Paragraph, Frame
+    layout::{Constraint, Direction, Layout, Rect},
+    Frame
 };
 
 use crate::{core::{chain::Chain, provider::Provider}, service::session::Session};
-use crate::tui::{widgets::{buttons, account}, app::{AppCommand, AppScreen}};
+use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
 
 const PORFOLIO_WIDTH: u16 = 80;
-const INTRO_HEIGHT: u16 = 2;
-const ACCOUNT_HEIGHT: u16 = 3;
+const SWITCH_HEIGHT: u16 = 3;
 const BUTTONS_ROW_HEIGHT: u16 = 3;
-
-const INTRO_TEXT: &str = "Portfolio";
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     session: Session,
-    provider: Provider,
-    account: account::Account,
 
+    mode_switch: buttons::MultiSwitch,
+    mode: Option<Box<dyn AppScreen + Send>>,
     quit_button: buttons::Button,
     receive_button: buttons::Button,
     send_button: buttons::Button,
@@ -37,24 +33,35 @@ impl Screen {
         let provider = Provider::new(&infura_token, chain)
             .expect("Failed to create provider");
 
-        let account = account::Account::new(session.account);
+        let mode_switch = buttons::MultiSwitch::new(vec![
+            buttons::Button::new("Accounts", Some('a')),
+            buttons::Button::new("Transactions", Some('t')).disable(),
+            buttons::Button::new("Charts", Some('c')).disable(),
+            buttons::Button::new("Settings", Some('s')).disable(),
+        ]);
+
         let quit_button = buttons::Button::new("Quit", Some('q'));
         let receive_button = buttons::Button::new("Receive", Some('r'));
         let send_button = buttons::Button::new("Send", Some('s')).disable();
+
+        let networks = buttons::Button::new("Networks", Some('n')).disable();
         let mut access_mnemonic = buttons::Button::new("Access mnemonic", Some('a'));
         if session.get_seed_phrase().is_err() {
             access_mnemonic.disabled = true;
         }
-        let delete_account = buttons::Button::new("Delete Account", Some('d'));
+        let delete_account = buttons::Button::new("Delete Account", Some('d')).warning();
         let manage_button = buttons::MenuButton::new(
-            "Manage", Some('m'), vec![access_mnemonic, delete_account]
+            "Manage", Some('m'), vec![networks, access_mnemonic, delete_account]
         );
+
+        let mode: Option<Box<dyn AppScreen + Send>> = Some(Box::new(
+            super::porfolio_accounts::Screen::new(session.clone(), provider.clone())));
 
         Self {
             command_tx,
             session,
-            provider,
-            account,
+            mode_switch,
+            mode,
             quit_button,
             receive_button,
             send_button,
@@ -80,17 +87,41 @@ impl AppScreen for Screen {
         if let Some(index) = self.manage_button.handle_event(&event) {
             match index {
                 0 => {
+                    // self.command_tx.send(AppCommand::SwitchScreen(Box::new(
+                    //     super::networks::Screen::new(self.command_tx.clone(), self.session.clone())
+                    // ))).unwrap();
+                    return Ok(true);
+                },
+                1 => {
                     self.command_tx.send(AppCommand::SwitchScreen(Box::new(
                         super::mnemonic_access::Screen::new(self.command_tx.clone(), self.session.clone())
                     ))).unwrap();
+                    return Ok(true);
                 },
-                1 => {
+                2 => {
                     self.command_tx.send(AppCommand::SwitchScreen(Box::new(
                         super::account_delete::Screen::new(
                             self.command_tx.clone(), self.session.clone())
                     ))).unwrap();
+                    return Ok(true);
                 },
                 _ => {}
+            }
+            return Ok(false);
+        }
+
+        if let Some(index) = self.mode_switch.handle_event(&event) {
+            match index {
+                _ => {} // TODO: implement modes
+            }
+            return Ok(false);
+        }
+
+        if let Some(mode) = &mut self.mode {
+            if let Ok(ok) = mode.handle_event(event.clone()) {
+                if ok {
+                    return Ok(true);
+                }
             }
         }
 
@@ -113,16 +144,12 @@ impl AppScreen for Screen {
     }
 
     async fn update(&mut self) {
-        if self.account.balance.is_none() {
-            let balance = self.provider.get_eth_balance(self.session.account)
-                .await
-                .expect("Failed to get balance");
-            self.account.balance = Some(balance);
+        if let Some(mode) = &mut self.mode {
+            mode.update().await;
         }
     }
 
-    fn render(&mut self, frame: &mut Frame) {
-        let area = frame.area();
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
         let horizontal_padding = (area.width.saturating_sub(PORFOLIO_WIDTH)) / 2;
 
         let centered_area = Rect {
@@ -135,21 +162,17 @@ impl AppScreen for Screen {
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(INTRO_HEIGHT),
-                Constraint::Min(0), // Fill height
-                Constraint::Length(ACCOUNT_HEIGHT),
-                Constraint::Min(0), // Fill height
+                Constraint::Length(SWITCH_HEIGHT),
+                Constraint::Fill(0), // Fill height for mode
                 Constraint::Length(BUTTONS_ROW_HEIGHT),
             ])
             .split(centered_area);
 
-        let intro_text = Paragraph::new(INTRO_TEXT)
-            .style(Style::default().fg(Color::Yellow).bold())
-            .alignment(Alignment::Center);
-        frame.render_widget(intro_text, content_layout[0]);
+        self.mode_switch.render(frame, content_layout[0]);
 
-        // TODO: Several accounts
-        self.account.render(frame, content_layout[2]);
+        if let Some(mode) = &mut self.mode {
+            mode.render(frame, content_layout[1]);
+        }
 
         let buttons_row = Layout::default()
             .direction(Direction::Horizontal)
@@ -159,7 +182,7 @@ impl AppScreen for Screen {
                 Constraint::Percentage(25),
                 Constraint::Percentage(25),
             ])
-            .split(content_layout[4]);
+            .split(content_layout[2]);
 
         self.quit_button.render(frame, buttons_row[0]);
         self.receive_button.render(frame, buttons_row[1]);
@@ -167,7 +190,7 @@ impl AppScreen for Screen {
         self.manage_button.render(frame, buttons_row[3]);
 
         if let Some(popup) = &mut self.popup {
-            popup.render(frame);
+            popup.render(frame, area);
         }
     }
 }

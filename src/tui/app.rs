@@ -1,6 +1,10 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
-use ratatui::{crossterm::event::Event, Frame};
+use ratatui::{
+    crossterm::event::Event,
+    layout::Rect,
+    Frame
+};
 
 use super::screens::welcome;
 
@@ -8,7 +12,7 @@ use super::screens::welcome;
 pub trait AppScreen {
     fn handle_event(&mut self, event: Event) -> anyhow::Result<bool>;
     async fn update(&mut self);
-    fn render(&mut self, frame: &mut Frame);
+    fn render(&mut self, frame: &mut Frame, area: Rect);
 }
 
 pub enum AppCommand {
@@ -58,7 +62,7 @@ impl AppScreen for App {
         self.current_screen.update().await
     }
 
-    fn render(&mut self, frame: &mut Frame) {
-        self.current_screen.render(frame);
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
+        self.current_screen.render(frame, area);
     }
 }

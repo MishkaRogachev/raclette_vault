@@ -118,8 +118,7 @@ impl AppScreen for Screen {
 
     async fn update(&mut self) {}
 
-    fn render(&mut self, frame: &mut Frame) {
-        let area = frame.area();
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
         let horizontal_padding = (area.width.saturating_sub(LOGIN_WIDTH)) / 2;
 
         let centered_area = Rect {

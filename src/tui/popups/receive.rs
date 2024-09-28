@@ -64,8 +64,7 @@ impl AppScreen for Popup {
 
     async fn update(&mut self) {}
 
-    fn render(&mut self, frame: &mut Frame) {
-        let area = frame.area();
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
         let horizontal_padding = (area.width.saturating_sub(RECEIVE_WIDTH)) / 2;
 
         let popup_area = Rect {
