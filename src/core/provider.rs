@@ -1,17 +1,9 @@
 use web3::{contract::{Contract, Options}, transports::Http, types::{Address, U256}, Web3};
 
-use super::chain::Chain;
+use super::{balance::{Balance, Balances}, chain::Chain, token::Token};
 
 const CHAINLINK_ABI: &[u8] = include_bytes!("../../abi/chainlink.json");
-
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct Balance {
-    pub value: f64,
-    pub usd_value: f64,
-    pub currency: String,
-    pub from_test_network: bool,
-}
-// TODO: balance timestamp
+const ERC20_ABI: &[u8] = include_bytes!("../../abi/erc20.json");
 
 #[derive(Clone)]
 pub struct Provider {
@@ -29,54 +21,11 @@ struct PriceFeedData {
     answered_in_round: U256,
 }
 
-impl Balance {
-    pub fn new(value: f64, usd_value: f64, currency: &str, from_test_network: bool) -> Self {
-        Self { value, usd_value, currency: currency.to_string(), from_test_network }
-    }
-}
-
-impl Chain {
-    pub fn finalize_endpoint_url(&self, endpoint_url: &str) -> String {
-        let chain_name = match self {
-            Chain::EthereumMainnet => "mainnet",
-            Chain::EthereumSepolia => "sepolia",
-            Chain::OptimismMainnet => "optimism-mainnet",
-            Chain::OptimismSepolia => "optimism-sepolia",
-            Chain::ArbitrumMainnet => "arbitrum-mainnet",
-            Chain::ArbitrumSepolia => "arbitrum-sepolia",
-        };
-        format!("https://{}.{}", chain_name, endpoint_url)
-    }
-
-    // NOTE from https://docs.chain.link/data-feeds/price-feeds/addresses
-    pub fn get_chainlink_contract_address(&self) -> Address {
-        match self {
-            Chain::EthereumMainnet => "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419",
-            Chain::EthereumSepolia => "0x694AA1769357215DE4FAC081bf1f309aDC325306",
-            Chain::OptimismMainnet => "0x13e3Ee699D1909E989722E753853AE30b17e08c5",
-            Chain::OptimismSepolia => "0x61Ec26aA57019C486B10502285c5A3D4A4750AD7",
-            Chain::ArbitrumMainnet => "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
-            Chain::ArbitrumSepolia => "0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165",
-
-        }
-        .parse()
-        .unwrap()
-    }
-}
-
 impl Provider {
     pub fn new(endpoint_url: &str, chain: Chain) -> anyhow::Result<Self> {
         let transport = Http::new(&chain.finalize_endpoint_url(endpoint_url))?;
         let web3 = Web3::new(transport);
         Ok(Self {web3, chain})
-    }
-
-    pub async fn get_eth_balance(&self, account: Address) -> anyhow::Result<Balance> {
-        let wei = self.web3.eth().balance(account, None).await?;
-        let eth = wei_to_eth(wei);
-        let usd_value = self.get_eth_usd_rate().await? * eth;
-
-        Ok(Balance::new(eth, usd_value, "ETH", self.chain.is_test_network()))
     }
 
     async fn get_eth_usd_rate(&self) -> anyhow::Result<f64> {
@@ -95,6 +44,36 @@ impl Provider {
         })?;
 
         Ok(result.answer as f64 / 10f64.powi(8))
+    }
+
+    pub async fn get_balances(&self, account: Address, tokens: &Vec<Token>) -> anyhow::Result<Balances> {
+        let mut balances = Vec::new();
+        let eth_usd_rate = self.get_eth_usd_rate().await?;
+
+        for token in tokens {
+            let balance = if token.symbol == "ETH" {
+                // Handle ETH balance
+                let wei = self.web3.eth().balance(account, None).await?;
+                let eth = wei_to_eth(wei);
+                Balance::new(eth, eth_usd_rate * eth, &token.symbol, self.chain.is_test_network())
+            } else {
+                // Handle ERC-20 token balances
+                let token_address = token.address.parse::<Address>()?;
+                let contract = Contract::from_json(self.web3.eth(), token_address, ERC20_ABI)?;
+
+                let balance: U256 = contract
+                    .query("balanceOf", (account,), None, Options::default(), None)
+                    .await?;
+
+                let balance_f64 = balance.as_u128() as f64 / 10f64.powi(token.decimals as i32);
+                let usd_value = balance_f64 * self.get_eth_usd_rate().await?;
+                Balance::new(balance_f64, usd_value, &token.symbol, self.chain.is_test_network())
+            };
+
+            balances.push(balance);
+        }
+
+        Ok(balances)
     }
 }
 

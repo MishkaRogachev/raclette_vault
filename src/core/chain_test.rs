@@ -15,6 +15,7 @@ mod tests {
         assert!(chain.finalize_endpoint_url(&endpoint_url).starts_with("https://"));
         assert!(!chain.get_display_name().is_empty());
         assert_eq!(chain.is_test_network(), is_test_net);
+        assert!(chain.get_chainlink_contract_address().to_string().starts_with("0x"));
 
         Ok(())
     }

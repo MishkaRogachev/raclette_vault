@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use test_case::test_case;
+    use crate::core::token::Token;
     use super::super::chain::Chain;
     use super::super::provider::Provider;
 
@@ -17,12 +18,17 @@ mod tests {
         };
         let endpoint_url = format!("infura.io/v3/{}", infura_token);
 
+        let tokens = vec![
+            Token::new("Ethereum", "ETH", "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", 18),
+        ];
+
         let account = web3::types::Address::from_low_u64_be(0);
         let provider = Provider::new(&endpoint_url, chain)?;
 
-        let balance = provider.get_eth_balance(account).await?;
-        assert_eq!(balance.currency, "ETH");
-        assert_ne!(balance.value, 0.0);
+        let balances = provider.get_balances(account, &tokens).await?;
+        assert_eq!(balances.len(), tokens.len());
+        assert_eq!(balances[0].currency, "ETH");
+        assert_ne!(balances[0].value, 0.0);
 
         Ok(())
     }

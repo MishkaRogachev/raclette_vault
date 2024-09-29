@@ -62,12 +62,12 @@ impl AppScreen for Screen {
         let mut crypto = self.crypto.lock().await;
 
         for account in &mut self.accounts {
-            account.balances = crypto.get_eth_balances(account.address).await;
+            account.balances = crypto.get_balances(account.address).await;
         }
 
         if self.last_update.is_none() || self.last_update.unwrap().elapsed() > UPDATE_INTERVAL {
             let accounts = self.accounts.iter().map(|account| account.address).collect();
-            crypto.fetch_eth_balances(accounts).await;
+            crypto.fetch_balances(accounts).await;
             self.last_update = Some(tokio::time::Instant::now());
         }
     }
@@ -104,7 +104,7 @@ impl AppScreen for Screen {
 
         let accounts_layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(self.accounts.iter().map(|_| Constraint::Length(3)).collect::<Vec<_>>().as_slice())
+            .constraints(self.accounts.iter().map(|_| Constraint::Fill(1)).collect::<Vec<_>>().as_slice())
             .split(content_layout[1]);
         for (account, account_layout) in self.accounts.iter_mut().zip(accounts_layout.iter()) {
             account.render(frame, *account_layout);
