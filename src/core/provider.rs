@@ -85,7 +85,7 @@ impl Provider {
 
     async fn get_eth_usd_rate(&self) -> anyhow::Result<f64> {
         let contrcat_address = self.chain.get_chainlink_contract_address();
-        let contract = Contract::from_json(self.web3.eth(), contrcat_address, CHAINLINK_ABI).unwrap();
+        let contract = Contract::from_json(self.web3.eth(), contrcat_address, CHAINLINK_ABI)?;
 
         let result: PriceFeedData = contract
         .query("latestRoundData", (), None, Options::default(), None)
@@ -96,8 +96,7 @@ impl Provider {
             started_at,
             updated_at,
             answered_in_round,
-        })
-        .unwrap();
+        })?;
 
         Ok(result.answer as f64 / 10f64.powi(8))
     }

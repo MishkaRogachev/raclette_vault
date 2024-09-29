@@ -16,8 +16,8 @@ mod tests {
         Db::open(db, "12345678")
     }
 
-    #[test]
-    fn test_crypto_chains() -> anyhow::Result<()> {
+    #[tokio::test]
+    async fn test_crypto_chains() -> anyhow::Result<()> {
         let db = Arc::new(create_test_db()?);
         let mut crypto = Crypto::new(db, "http://localhost:8545");
         assert_eq!(crypto.get_active_networks().len(), 0);
@@ -25,7 +25,7 @@ mod tests {
         crypto.load_active_networks()?;
         assert_eq!(crypto.get_active_networks().len(), 0);
 
-        crypto.save_active_networks(vec![Chain::EthereumMainnet, Chain::ArbitrumMainnet])?;
+        crypto.save_active_networks(vec![Chain::EthereumMainnet, Chain::ArbitrumMainnet]).await?;
         assert_eq!(crypto.get_active_networks().len(), 2);
 
         assert!(crypto.get_active_networks().contains(&Chain::EthereumMainnet));

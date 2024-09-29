@@ -41,6 +41,7 @@ impl CheckBox {
         }
     }
 
+    #[allow(dead_code)]
     pub fn disabled(mut self) -> Self {
         self.disabled = true;
         self
@@ -51,6 +52,7 @@ impl CheckBox {
         self
     }
 
+    #[allow(dead_code)]
     pub fn primary(mut self) -> Self {
         self.color = Color::White;
         self
@@ -136,6 +138,7 @@ where T: Eq + std::hash::Hash + Clone {
         Self { options }
     }
 
+    #[allow(dead_code)]
     pub fn option(&mut self, key: T) -> Option<&mut CheckBox> {
         self.options.get_mut(&key)
     }

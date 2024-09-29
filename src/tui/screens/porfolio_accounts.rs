@@ -13,34 +13,43 @@ use crate::tui::{widgets::account, app::AppScreen};
 const SUMMARY_HEIGHT: u16 = 2;
 const SUMMARY_TEXT: &str = "Summary balance";
 
+const UPDATE_INTERVAL: tokio::time::Duration = tokio::time::Duration::from_millis(2000);
+
 pub struct Screen {
-    session: Session,
     crypto: Arc<Mutex<Crypto>>,
-    account: account::Account,
+    last_update: Option<tokio::time::Instant>,
+
+    accounts: Vec<account::Account>,
 }
 
 impl Screen {
     pub fn new(session: Session, crypto: Arc<Mutex<Crypto>>) -> Self {
-
-        let account = account::Account::new(session.account);
+        let accounts = vec![account::Account::new(session.account)];
 
         Self {
-            session,
             crypto,
-            account,
+            last_update: None,
+            accounts,
         }
     }
 
     fn get_summary_balance_str(&self) -> (String, bool) {
-        if let Some(balance) = &self.account.balance {
-            let end = format!("{:.2} USD", balance.usd_value);
-            if balance.from_test_network {
-                (format!("{} (testnet)", end), true)
-            } else {
-                (end, false)
+        let mut usd_summary = None;
+        let mut from_test_network = false;
+        for account in &self.accounts {
+            if let Some(balance) = &account.balance {
+                usd_summary = Some(usd_summary.unwrap_or(0.0) + balance.usd_value);
+                if balance.from_test_network {
+                    from_test_network = true;
+                }
             }
-        } else {
-            ("Loading...".to_string(), false)
+        }
+        match usd_summary {
+            Some(usd_summary) => (
+                format!("{} {:.2} USD", if from_test_network {"(Testnet) "} else { "" }, usd_summary),
+                from_test_network
+            ),
+            None => (String::from("Loading.."), false),
         }
     }
 }
@@ -52,12 +61,16 @@ impl AppScreen for Screen {
     }
 
     async fn update(&mut self) {
-        let crypto = self.crypto.lock().await;
-        if self.account.balance.is_none() {
-            let balance = crypto.get_eth_balance(self.session.account)
-                .await
-                .expect("Failed to get balance");
-            self.account.balance = Some(balance);
+        let mut crypto = self.crypto.lock().await;
+
+        for account in &mut self.accounts {
+            account.balance = crypto.get_eth_balance(account.address).await;
+        }
+
+        if self.last_update.is_none() || self.last_update.unwrap().elapsed() > UPDATE_INTERVAL {
+            let accounts = self.accounts.iter().map(|account| account.address).collect();
+            crypto.fetch_eth_balances(accounts).await;
+            self.last_update = Some(tokio::time::Instant::now());
         }
     }
 
@@ -91,7 +104,13 @@ impl AppScreen for Screen {
         frame.render_widget(summary_label, summary[0]);
         frame.render_widget(balances_label, summary[1]);
 
-        // TODO: Several accounts
-        self.account.render(frame, content_layout[1]);
+        let accounts_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(self.accounts.iter().map(|_| Constraint::Length(3)).collect::<Vec<_>>().as_slice())
+            .split(content_layout[1]);
+        for (account, account_layout) in self.accounts.iter_mut().zip(accounts_layout.iter()) {
+            account.render(frame, *account_layout);
+        }
     }
 }
+

@@ -75,7 +75,8 @@ impl Popup {
         let mut crypto = self.crypto.lock().await;
         let mut all_networks = self.mainnet_options.get_checked_keys();
         all_networks.extend(self.testnet_options.get_checked_keys());
-        crypto.save_active_networks(all_networks).unwrap();
+        crypto.save_active_networks(all_networks)
+            .await.expect("Failed to save active networks");
     }
 }
 
