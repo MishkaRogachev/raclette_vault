@@ -1,3 +1,5 @@
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -5,7 +7,7 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::{core::provider::Provider, service::session::Session};
+use crate::service::{crypto:: Crypto, session::Session};
 use crate::tui::{widgets::account, app::AppScreen};
 
 const SUMMARY_HEIGHT: u16 = 2;
@@ -13,27 +15,32 @@ const SUMMARY_TEXT: &str = "Summary balance";
 
 pub struct Screen {
     session: Session,
-    provider: Provider,
+    crypto: Arc<Mutex<Crypto>>,
     account: account::Account,
 }
 
 impl Screen {
-    pub fn new(session: Session, provider: Provider) -> Self {
+    pub fn new(session: Session, crypto: Arc<Mutex<Crypto>>) -> Self {
 
         let account = account::Account::new(session.account);
 
         Self {
             session,
-            provider,
+            crypto,
             account,
         }
     }
 
-    fn get_summary_balance_str(&self) -> String {
+    fn get_summary_balance_str(&self) -> (String, bool) {
         if let Some(balance) = &self.account.balance {
-            format!("{:.2} USD", balance.usd_value)
+            let end = format!("{:.2} USD", balance.usd_value);
+            if balance.from_test_network {
+                (format!("{} (testnet)", end), true)
+            } else {
+                (end, false)
+            }
         } else {
-            "Loading...".to_string()
+            ("Loading...".to_string(), false)
         }
     }
 }
@@ -45,8 +52,9 @@ impl AppScreen for Screen {
     }
 
     async fn update(&mut self) {
+        let crypto = self.crypto.lock().await;
         if self.account.balance.is_none() {
-            let balance = self.provider.get_eth_balance(self.session.account)
+            let balance = crypto.get_eth_balance(self.session.account)
                 .await
                 .expect("Failed to get balance");
             self.account.balance = Some(balance);
@@ -73,8 +81,11 @@ impl AppScreen for Screen {
         let summary_label = Paragraph::new(SUMMARY_TEXT)
             .style(Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD))
             .alignment(Alignment::Left);
-        let balances_label = Paragraph::new(self.get_summary_balance_str())
-            .style(Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD))
+
+        let (summary_balance, from_test_network) = self.get_summary_balance_str();
+        let balance_color = if from_test_network { Color::Red } else { Color::Yellow };
+        let balances_label = Paragraph::new(summary_balance)
+            .style(Style::default().fg(balance_color).add_modifier(ratatui::style::Modifier::BOLD))
             .alignment(Alignment::Right);
 
         frame.render_widget(summary_label, summary[0]);

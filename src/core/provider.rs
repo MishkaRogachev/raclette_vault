@@ -4,11 +4,14 @@ use super::chain::Chain;
 
 const CHAINLINK_ABI: &[u8] = include_bytes!("../../abi/chainlink.json");
 
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Balance {
     pub value: f64,
     pub usd_value: f64,
     pub currency: String,
+    pub from_test_network: bool,
 }
+// TODO: balance timestamp
 
 #[derive(Clone)]
 pub struct Provider {
@@ -16,6 +19,7 @@ pub struct Provider {
     chain: Chain,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct PriceFeedData {
     round_id: U256,
@@ -26,8 +30,8 @@ struct PriceFeedData {
 }
 
 impl Balance {
-    pub fn new(value: f64, usd_value: f64, currency: String) -> Self {
-        Self {value, usd_value, currency}
+    pub fn new(value: f64, usd_value: f64, currency: &str, from_test_network: bool) -> Self {
+        Self { value, usd_value, currency: currency.to_string(), from_test_network }
     }
 
     pub fn to_string(&self) -> String {
@@ -36,26 +40,28 @@ impl Balance {
 }
 
 impl Chain {
-    pub fn get_infura_url(&self, infura_token: &str) -> String {
+    pub fn finalize_endpoint_url(&self, endpoint_url: &str) -> String {
         let chain_name = match self {
             Chain::EthereumMainnet => "mainnet",
-            Chain::Optimism => "optimism",
-            Chain::Arbitrum => "arbitrum",
-            Chain::Goerli => "goerli",
-            Chain::Kovan => "kovan",
-            Chain::Rinkeby => "rinkeby",
+            Chain::EthereumSepolia => "sepolia",
+            Chain::OptimismMainnet => "optimism-mainnet",
+            Chain::OptimismSepolia => "optimism-sepolia",
+            Chain::ArbitrumMainnet => "arbitrum-mainnet",
+            Chain::ArbitrumSepolia => "arbitrum-sepolia",
         };
-        format!("https://{}.infura.io/v3/{}", chain_name, infura_token)
+        format!("https://{}.{}", chain_name, endpoint_url)
     }
 
+    // NOTE from https://docs.chain.link/data-feeds/price-feeds/addresses
     pub fn get_chainlink_contract_address(&self) -> Address {
         match self {
             Chain::EthereumMainnet => "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419",
-            Chain::Optimism => "0x13e3Ee699D1909E989722E753853AE30b17e08c5",
-            Chain::Arbitrum => "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
-            Chain::Goerli => "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e",
-            Chain::Kovan => "0x9326BFA02ADD2366b30bacB125260Af641031331",
-            Chain::Rinkeby => "0x8A753747A1Fa494EC906cE90E9f37563A8AF630e",
+            Chain::EthereumSepolia => "0x694AA1769357215DE4FAC081bf1f309aDC325306",
+            Chain::OptimismMainnet => "0x13e3Ee699D1909E989722E753853AE30b17e08c5",
+            Chain::OptimismSepolia => "0x61Ec26aA57019C486B10502285c5A3D4A4750AD7",
+            Chain::ArbitrumMainnet => "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
+            Chain::ArbitrumSepolia => "0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165",
+
         }
         .parse()
         .unwrap()
@@ -63,8 +69,8 @@ impl Chain {
 }
 
 impl Provider {
-    pub fn new(infura_token: &str, chain: Chain) -> anyhow::Result<Self> {
-        let transport = Http::new(&chain.get_infura_url(infura_token))?;
+    pub fn new(endpoint_url: &str, chain: Chain) -> anyhow::Result<Self> {
+        let transport = Http::new(&chain.finalize_endpoint_url(endpoint_url))?;
         let web3 = Web3::new(transport);
         Ok(Self {web3, chain})
     }
@@ -74,7 +80,7 @@ impl Provider {
         let eth = wei_to_eth(wei);
         let usd_value = self.get_eth_usd_rate().await? * eth;
 
-        Ok(Balance::new(eth, usd_value, "ETH".to_string()))
+        Ok(Balance::new(eth, usd_value, "ETH", self.chain.is_test_network()))
     }
 
     async fn get_eth_usd_rate(&self) -> anyhow::Result<f64> {

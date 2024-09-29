@@ -49,6 +49,7 @@ pub fn list_databases(path: &PathBuf) -> anyhow::Result<Vec<Address>> {
     Ok(addresses)
 }
 
+#[allow(dead_code)]
 pub fn remove_all_databases(path: &Path) -> anyhow::Result<()> {
     let accounts_dir = path.join(ACCOUNTS_DIR);
 

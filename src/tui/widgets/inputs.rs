@@ -1,4 +1,3 @@
-use aes_gcm::Key;
 use zeroize::Zeroizing;
 use ratatui::{
     crossterm::event::{Event, KeyCode},

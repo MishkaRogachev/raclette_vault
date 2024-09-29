@@ -4,7 +4,6 @@ use zeroize::Zeroizing;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum WordCount {
     Words12 = 12,
-    Words18 = 18,
     Words24 = 24,
 }
 

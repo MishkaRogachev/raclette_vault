@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use crate::{core::{key_pair::KeyPair, seed_phrase::SeedPhrase}, persistence};
+use crate::core::{key_pair::KeyPair, seed_phrase::SeedPhrase};
+use crate::persistence::{db::Db, manage};
 
 const ROOT_KEYPAIR: &[u8] = b"root_keypair";
 const ROOT_SEED_PHRASE: &[u8] = b"root_seed_phrase";
@@ -12,7 +13,7 @@ const ERR_WRONG_PASSWORD_PROVIDED: &str = "Wrong password provided";
 #[derive(Clone)]
 pub struct Session {
     pub account: web3::types::Address,
-    db: Arc<persistence::db::Db>
+    db: Arc<Db>
 }
 
 impl Session {
@@ -22,7 +23,7 @@ impl Session {
         keypair.validate()?;
 
         let account = keypair.get_address();
-        let db = persistence::manage::open_database(&db_path()?, account, password)?;
+        let db = manage::open_database(&db_path()?, account, password)?;
 
         let words = seed_phrase.get_words();
         let serialized_seed_phrase = serde_json::to_vec(&words)?;
@@ -38,7 +39,7 @@ impl Session {
     }
 
     pub fn login(account: web3::types::Address, password: &str) -> anyhow::Result<Self> {
-        let db = persistence::manage::open_database(&db_path()?, account, password)?;
+        let db = manage::open_database(&db_path()?, account, password)?;
         let session = Session {
             account,
             db: Arc::new(db),
@@ -52,11 +53,11 @@ impl Session {
     }
 
     pub fn list_accounts() -> anyhow::Result<Vec<web3::types::Address>> {
-        persistence::manage::list_databases(&db_path()?)
+        manage::list_databases(&db_path()?)
     }
 
     pub fn remove_account(account: web3::types::Address) -> anyhow::Result<()> {
-        persistence::manage::remove_database(&db_path()?, account)
+        manage::remove_database(&db_path()?, account)
     }
 
     pub fn get_seed_phrase(&self) -> anyhow::Result<SeedPhrase> {

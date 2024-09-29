@@ -22,6 +22,7 @@ impl HProgress {
         }
     }
 
+    #[allow(dead_code)]
     pub fn set_value(&mut self, value: u64) {
         self.value = value.min(self.max).max(self.min);
     }

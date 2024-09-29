@@ -1,11 +1,12 @@
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
+use tokio::sync::Mutex;
 use ratatui::{
     crossterm::event::Event,
     layout::{Constraint, Direction, Layout, Rect},
     Frame
 };
 
-use crate::{core::{chain::Chain, provider::Provider}, service::session::Session};
+use crate::{core::chain::Chain, service::{session::Session, crypto::Crypto}};
 use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
 
 const POPUP_WIDTH: u16 = 60;
@@ -16,6 +17,8 @@ const BUTTONS_ROW_HEIGHT: u16 = 3;
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     session: Session,
+    #[allow(dead_code)]
+    crypto: Arc<Mutex<Crypto>>,
 
     mode_switch: buttons::MultiSwitch,
     mode: Option<Box<dyn AppScreen + Send>>,
@@ -30,9 +33,17 @@ impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session) -> Self {
         let infura_token = std::env::var("INFURA_TOKEN")
             .expect("INFURA_TOKEN env var is not set");
-        let chain = Chain::EthereumMainnet;
-        let provider = Provider::new(&infura_token, chain)
-            .expect("Failed to create provider");
+        let endpoint_url = format!("infura.io/v3/{}", infura_token);
+
+        let mut crypto: Crypto = Crypto::new(&endpoint_url);
+        crypto.add_chain(Chain::EthereumMainnet).expect("Failed to access Ethereum chain");
+        // crypto.add_chain(Chain::EthereumSepolia).expect("Failed to access Sepolia chain");
+        // crypto.add_chain(Chain::OptimismMainnet).expect("Failed to access Optimism chain");
+        // crypto.add_chain(Chain::OptimismSepolia).expect("Failed to access Sepolia chain");
+        // crypto.add_chain(Chain::ArbitrumMainnet).expect("Failed to access Arbitrum chain");
+        // crypto.add_chain(Chain::ArbitrumSepolia).expect("Failed to access Sepolia chain");
+
+        let crypto = Arc::new(Mutex::new(crypto));
 
         let mode_switch = buttons::MultiSwitch::new(vec![
             buttons::Button::new("Accounts", Some('a')),
@@ -56,11 +67,12 @@ impl Screen {
         );
 
         let mode: Option<Box<dyn AppScreen + Send>> = Some(Box::new(
-            super::porfolio_accounts::Screen::new(session.clone(), provider.clone())));
+            super::porfolio_accounts::Screen::new(session.clone(), crypto.clone())));
 
         Self {
             command_tx,
             session,
+            crypto,
             mode_switch,
             mode,
             quit_button,
