@@ -13,7 +13,6 @@ use crate::tui::widgets::{buttons, mnemonic};
 
 const MAX_MNEM_ACCESS_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 2;
-const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const INTRO_TEXT: &str = "This is your mnemonic seed phrase. Handle it with care!";
 
@@ -30,7 +29,7 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session) -> Self {
-        let seed_phrase = session.get_seed_phrase().unwrap();
+        let seed_phrase = session.db.get_seed_phrase().unwrap();
 
         let mnemonic_words = mnemonic::MnemonicWords::new(seed_phrase.get_words_zeroizing());
         let back_button = buttons::Button::new("Back", Some('b'));
@@ -54,7 +53,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(()) = self.back_button.handle_event(&event) {
             let portfolio_screen = Box::new(super::porfolio::Screen::new(self.command_tx.clone(), self.session.clone()));
             self.command_tx
@@ -91,7 +90,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Length(mnemonic::MNEMONIC_HEIGHT),
-                Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Length(buttons::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

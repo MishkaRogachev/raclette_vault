@@ -12,7 +12,6 @@ use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
 
 const LOGO_HEIGHT: u16 = 20;
 const WARNING_HEIGHT: u16 = 1;
-const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const WARNING_TEXT: &str = "Please don't use this wallet for real crypto!";
 
@@ -54,7 +53,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(()) = self.quit_button.handle_event(&event) {
             self.command_tx.send(AppCommand::Quit).unwrap();
             return Ok(true);
@@ -94,7 +93,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Max(LOGO_HEIGHT),
                 Constraint::Length(WARNING_HEIGHT),
-                Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Length(buttons::BUTTONS_HEIGHT),
                 Constraint::Min(0), // Fill height
             ])
             .split(area);

@@ -35,7 +35,7 @@ impl Tui {
 
         tokio::spawn(async move {
             while !self.shutdown_handle.load(Ordering::Relaxed) {
-                self.app.process_events();
+                self.app.process_events().await;
                 self.app.update().await;
                 terminal.draw(|frame| {
                     let area = frame.area();

@@ -47,7 +47,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, _event: Event) -> anyhow::Result<bool> {
+    async fn handle_event(&mut self, _event: Event) -> anyhow::Result<bool> {
         return Ok(false);
     }
 

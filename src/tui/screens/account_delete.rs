@@ -13,7 +13,6 @@ use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
 const MAX_DELETE_WIDTH: u16 = 80;
 const SKULL_HEIGHT: u16 = 20;
 const WARNING_HEIGHT: u16 = 1;
-const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const WARNING_TEXT: &str = "Are you going to delete your account and root keypair!?";
 
@@ -36,7 +35,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(()) = self.cancel_button.handle_event(&event) {
             let porfolio = Box::new(super::porfolio::Screen::new(
                 self.command_tx.clone(), self.session.clone()));
@@ -66,7 +65,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(SKULL_HEIGHT),
                 Constraint::Length(WARNING_HEIGHT),
-                Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Length(buttons::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

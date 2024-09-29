@@ -13,8 +13,6 @@ use crate::tui::widgets::{buttons, mnemonic};
 
 const MAX_CREATE_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
-const SWITCH_HEIGHT: u16 = 3;
-const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const INTRO_TEXT: &str = "This is your mnemonic seed phrase. You may access it later in the app.";
 
@@ -55,7 +53,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(is_on) = self.word_cnt_switch.handle_event(&event) {
             self.seed_phrase = SeedPhrase::generate(if is_on == 1 {
                 WordCount::Words24 } else { WordCount::Words12 })?;
@@ -99,9 +97,9 @@ impl AppScreen for Screen {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(INTRO_HEIGHT),
-                Constraint::Length(SWITCH_HEIGHT),
+                Constraint::Length(buttons::SWITCH_HEIGHT),
                 Constraint::Length(mnemonic::MNEMONIC_HEIGHT),
-                Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Length(buttons::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

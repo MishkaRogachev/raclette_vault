@@ -18,7 +18,6 @@ const INTRO_HEIGHT: u16 = 1;
 const INPUT_LABEL_HEIGHT: u16 = 1;
 const INPUT_HEIGHT: u16 = 3;
 const TIP_HEIGHT: u16 = 1;
-const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const INTRO_TEXT: &str = "Your master account keypair was created. Now let's secure it!";
 const FIRST_LABEL_TEXT: &str = "Enter password. It will not be stored anywhere.";
@@ -54,7 +53,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         let scoped_event = focus::handle_scoped_event(
             &mut [&mut self.first_input, &mut self.second_input], &event);
 
@@ -138,7 +137,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(TIP_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Length(buttons::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

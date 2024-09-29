@@ -22,7 +22,7 @@ mod tests {
         assert!(Session::login(account, "wrong_password").is_err());
 
         let session = Session::login(account, password)?;
-        let keypair_back = session.get_keypair()?;
+        let keypair_back = session.db.get_keypair()?;
         keypair_back.validate()?;
         assert_eq!(keypair, keypair_back);
 
@@ -30,12 +30,12 @@ mod tests {
         assert!(accounts.contains(&account));
 
         // Access seed phrase
-        let seed_phrase_back = session.get_seed_phrase()?;
+        let seed_phrase_back = session.db.get_seed_phrase()?;
         assert_eq!(seed_phrase, seed_phrase_back);
 
         // Delete seed phrase
-        session.delete_seed_phrase()?;
-        assert!(session.get_seed_phrase().is_err());
+        session.db.delete_seed_phrase()?;
+        assert!(session.db.get_seed_phrase().is_err());
 
         // Remove account
         session.delete_account()?;

@@ -11,7 +11,6 @@ use ratatui::{
 use crate::tui::{widgets::buttons, app::AppScreen};
 
 const ACCOUNT_HEIGHT: u16 = 2;
-const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const TITLE: &str = "Receive Crypto";
 
@@ -49,7 +48,7 @@ impl Popup {
 
 #[async_trait::async_trait]
 impl AppScreen for Popup {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(()) = self.back_button.handle_event(&event) {
             return Ok(true);
         }
@@ -78,7 +77,7 @@ impl AppScreen for Popup {
                 Constraint::Length(1), // Margin
                 Constraint::Length(ACCOUNT_HEIGHT),
                 Constraint::Fill(0), // Fill height for QR code
-                Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Length(buttons::BUTTONS_HEIGHT),
             ])
             .split(inner_area);
 

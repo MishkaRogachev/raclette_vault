@@ -1,51 +1,55 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use crate::core::{chain::Chain, provider::{Provider, Balance}};
+use crate::{core::{chain::Chain, provider::{Balance, Provider}}, persistence::db::Db};
 
 #[derive(Clone)]
 pub struct Crypto {
+    db: Arc<Db>,
     endpoint_url: String,
     providers: HashMap<Chain, Provider>,
 }
 
 impl Crypto {
-    pub fn new(endpoint_url: &str) -> Self {
+    pub fn new(db: Arc<Db>, endpoint_url: &str) -> Self {
         Self {
+            db,
             endpoint_url: endpoint_url.to_string(),
             providers: HashMap::new()
         }
     }
 
-    pub fn add_chain(&mut self, chain: Chain) -> anyhow::Result<bool> {
-        if self.providers.contains_key(&chain) {
-            return Ok(false);
-        }
-        let provider = Provider::new(&self.endpoint_url, chain.clone())?;
-        self.providers.insert(chain, provider);
-        Ok(true)
-    }
-
-    #[allow(dead_code)]
-    pub fn set_chains(&mut self, chains: Vec<Chain>) -> anyhow::Result<()> {
+    fn set_active_networks_impl(&mut self, chains: Vec<Chain>) -> anyhow::Result<()> {
         let old_chains = self.providers.keys().cloned().collect::<Vec<_>>();
         for chain in &old_chains {
             if !chains.contains(&chain) {
                 self.providers.remove(&chain);
             }
         }
-
         for chain in &chains {
             if !old_chains.contains(chain) {
-                self.add_chain(chain.clone())?;
+                let provider = Provider::new(&self.endpoint_url, chain.clone())?;
+                self.providers.insert(chain.clone(), provider);
             }
         }
-
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub fn get_active_chains(&self) -> Vec<Chain> {
+    pub fn save_active_networks(&mut self, chains: Vec<Chain>) -> anyhow::Result<()> {
+        self.set_active_networks_impl(chains.clone())?;
+        self.db.save_active_networks(&chains)
+    }
+
+    pub fn load_active_networks(&mut self) -> anyhow::Result<()> {
+        let chains = self.db.get_active_networks()?;
+        self.set_active_networks_impl(chains)
+    }
+
+    pub fn get_active_networks(&self) -> Vec<Chain> {
         self.providers.keys().cloned().collect()
+    }
+
+    pub fn in_testnet(&self) -> bool {
+        self.providers.keys().any(|chain| chain.is_test_network())
     }
 
     pub async fn get_eth_balance(&self, account: web3::types::Address) -> anyhow::Result<Balance> {

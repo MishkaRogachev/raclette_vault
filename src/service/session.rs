@@ -1,19 +1,14 @@
 use std::sync::Arc;
 
-use crate::core::{key_pair::KeyPair, seed_phrase::SeedPhrase};
+use crate::core::{chain, key_pair::KeyPair, seed_phrase::SeedPhrase};
 use crate::persistence::{db::Db, manage};
 
-const ROOT_KEYPAIR: &[u8] = b"root_keypair";
-const ROOT_SEED_PHRASE: &[u8] = b"root_seed_phrase";
-
-const ERR_SEED_PHRASE_NOT_FOUND: &str = "Seed phrase not found";
-const ERR_ACCOUNT_NOT_FOUND: &str = "Account not found";
 const ERR_WRONG_PASSWORD_PROVIDED: &str = "Wrong password provided";
 
 #[derive(Clone)]
 pub struct Session {
     pub account: web3::types::Address,
-    db: Arc<Db>
+    pub db: Arc<Db>
 }
 
 impl Session {
@@ -25,12 +20,9 @@ impl Session {
         let account = keypair.get_address();
         let db = manage::open_database(&db_path()?, account, password)?;
 
-        let words = seed_phrase.get_words();
-        let serialized_seed_phrase = serde_json::to_vec(&words)?;
-        db.insert(ROOT_SEED_PHRASE, &serialized_seed_phrase)?;
-
-        let serialized_keypair = serde_json::to_vec(&keypair)?;
-        db.insert(ROOT_KEYPAIR, &serialized_keypair)?;
+        db.save_seed_phrase(seed_phrase)?;
+        db.save_keypair(&keypair)?;
+        db.save_active_networks(&chain::MAINNET_CHAINS)?;
 
         Ok(Session {
             account,
@@ -40,16 +32,14 @@ impl Session {
 
     pub fn login(account: web3::types::Address, password: &str) -> anyhow::Result<Self> {
         let db = manage::open_database(&db_path()?, account, password)?;
-        let session = Session {
-            account,
-            db: Arc::new(db),
-        };
-
-        if session.get_keypair().is_err() {
+        if db.get_keypair().is_err() {
             return Err(anyhow::anyhow!(ERR_WRONG_PASSWORD_PROVIDED));
         }
 
-        Ok(session)
+        Ok(Session {
+            account,
+            db: Arc::new(db),
+        })
     }
 
     pub fn list_accounts() -> anyhow::Result<Vec<web3::types::Address>> {
@@ -58,32 +48,6 @@ impl Session {
 
     pub fn remove_account(account: web3::types::Address) -> anyhow::Result<()> {
         manage::remove_database(&db_path()?, account)
-    }
-
-    pub fn get_seed_phrase(&self) -> anyhow::Result<SeedPhrase> {
-        let serialized_seed_phrase: Option<Vec<u8>> = self.db.get(ROOT_SEED_PHRASE)?;
-        if let Some(serialized_seed_phrase) = serialized_seed_phrase {
-            let words: Vec<String> = serde_json::from_slice(&serialized_seed_phrase)?;
-            return SeedPhrase::from_words(words);
-        }
-        Err(anyhow::anyhow!(ERR_SEED_PHRASE_NOT_FOUND))
-    }
-
-    pub fn get_keypair(&self) -> anyhow::Result<KeyPair> {
-        let serialized_keypair: Option<Vec<u8>> = self.db.get(ROOT_KEYPAIR)?;
-        if let Some(serialized_keypair) = serialized_keypair {
-            let keypair: KeyPair = serde_json::from_slice(&serialized_keypair)?;
-            keypair.validate()?;
-            return Ok(keypair);
-        }
-        Err(anyhow::anyhow!(ERR_ACCOUNT_NOT_FOUND))
-    }
-
-    pub fn delete_seed_phrase(&self) -> anyhow::Result<()> {
-        match self.db.remove(ROOT_SEED_PHRASE) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(anyhow::anyhow!(ERR_SEED_PHRASE_NOT_FOUND))
-        }
     }
 
     pub fn delete_account(&self) -> anyhow::Result<()> {

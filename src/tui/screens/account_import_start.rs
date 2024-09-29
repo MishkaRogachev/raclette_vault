@@ -13,9 +13,7 @@ use crate::tui::widgets::{buttons, ascii};
 
 const MAX_IMPORT_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 3;
-const SWITCH_HEIGHT: u16 = 3;
 const OUTRO_HEIGHT: u16 = 2;
-const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const INTRO_TEXT: &str = "Strat importing your mnemonic seed phrase.\n Choose the correct number of words.";
 const OUTRO_TEXT: &str = "Next, you will be prompted to enter your seed phrase words in the correct order.";
@@ -48,7 +46,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(is_on) = self.word_cnt_switch.handle_event(&event) {
             self.word_count = if is_on == 1 {
                 WordCount::Words24
@@ -87,10 +85,10 @@ impl AppScreen for Screen {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(INTRO_HEIGHT),
-                Constraint::Length(SWITCH_HEIGHT),
+                Constraint::Length(buttons::SWITCH_HEIGHT),
                 Constraint::Fill(0), // Logo
                 Constraint::Length(OUTRO_HEIGHT),
-                Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Length(buttons::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

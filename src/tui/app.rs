@@ -13,7 +13,7 @@ pub const MAX_APP_WIDTH: u16 = 120;
 
 #[async_trait::async_trait]
 pub trait AppScreen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool>;
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool>;
     async fn update(&mut self);
     fn render(&mut self, frame: &mut Frame, area: Rect);
 }
@@ -37,9 +37,9 @@ impl App {
         Ok(Self { shutdown_handle, current_screen, command_rx, events })
     }
 
-    pub fn process_events(&mut self) {
+    pub async fn process_events(&mut self) {
         if let Ok(event) = self.events.try_recv() {
-            self.handle_event(event).expect("Failed to handle screen event");
+            self.handle_event(event).await.expect("Failed to handle screen event");
         }
 
         if let Ok(command) = self.command_rx.try_recv() {
@@ -57,8 +57,8 @@ impl App {
 
 #[async_trait::async_trait]
 impl AppScreen for App {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
-        self.current_screen.handle_event(event)
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+        self.current_screen.handle_event(event).await
     }
 
     async fn update(&mut self) {

@@ -1,6 +1,5 @@
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Chain {
     EthereumMainnet,
     EthereumSepolia,
@@ -10,8 +9,19 @@ pub enum Chain {
     ArbitrumSepolia,
 }
 
+pub const MAINNET_CHAINS: [Chain; 3] = [
+    Chain::EthereumMainnet,
+    Chain::OptimismMainnet,
+    Chain::ArbitrumMainnet,
+];
+
+pub const TESTNET_CHAINS: [Chain; 3] = [
+    Chain::EthereumSepolia,
+    Chain::OptimismSepolia,
+    Chain::ArbitrumSepolia,
+];
+
 impl Chain {
-    #[allow(dead_code)]
     pub fn get_display_name(&self) -> &str {
         match self {
             Chain::EthereumMainnet => "Ethereum Mainnet",

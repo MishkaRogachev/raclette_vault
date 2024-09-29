@@ -14,7 +14,6 @@ const INTRO_HEIGHT: u16 = 1;
 const INPUT_LABEL_HEIGHT: u16 = 1;
 const INPUT_HEIGHT: u16 = 3;
 const ERROR_HEIGHT: u16 = 1;
-const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const INTRO_TEXT: &str = "Confirm removal of the seed phrase";
 const LABEL_TEXT: &str = "Enter word";
@@ -61,11 +60,11 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         let scoped_event = focus::handle_scoped_event(&mut [&mut self.input], &event);
 
         let delete_action = || {
-            self.session.delete_seed_phrase().expect("Failed to delete seed phrase");
+            self.session.db.delete_seed_phrase().expect("Failed to delete seed phrase");
             self.command_tx.send(AppCommand::SwitchScreen(Box::new(
                 super::porfolio::Screen::new(self.command_tx.clone(), self.session.clone())
             ))).unwrap();
@@ -128,7 +127,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(ERROR_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Length(buttons::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

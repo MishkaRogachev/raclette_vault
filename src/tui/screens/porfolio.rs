@@ -6,18 +6,15 @@ use ratatui::{
     Frame
 };
 
-use crate::{core::chain::Chain, service::{session::Session, crypto::Crypto}};
+use crate::service::{session::Session, crypto::Crypto};
 use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
 
 const POPUP_WIDTH: u16 = 60;
 const POPUP_HEIGHT: u16 = 30;
-const SWITCH_HEIGHT: u16 = 3;
-const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     session: Session,
-    #[allow(dead_code)]
     crypto: Arc<Mutex<Crypto>>,
 
     mode_switch: buttons::MultiSwitch,
@@ -35,14 +32,8 @@ impl Screen {
             .expect("INFURA_TOKEN env var is not set");
         let endpoint_url = format!("infura.io/v3/{}", infura_token);
 
-        let mut crypto: Crypto = Crypto::new(&endpoint_url);
-        crypto.add_chain(Chain::EthereumMainnet).expect("Failed to access Ethereum chain");
-        // crypto.add_chain(Chain::EthereumSepolia).expect("Failed to access Sepolia chain");
-        // crypto.add_chain(Chain::OptimismMainnet).expect("Failed to access Optimism chain");
-        // crypto.add_chain(Chain::OptimismSepolia).expect("Failed to access Sepolia chain");
-        // crypto.add_chain(Chain::ArbitrumMainnet).expect("Failed to access Arbitrum chain");
-        // crypto.add_chain(Chain::ArbitrumSepolia).expect("Failed to access Sepolia chain");
-
+        let mut crypto: Crypto = Crypto::new(session.db.clone(), &endpoint_url);
+        crypto.load_active_networks().expect("Failed to load active networks");
         let crypto = Arc::new(Mutex::new(crypto));
 
         let mode_switch = buttons::MultiSwitch::new(vec![
@@ -56,15 +47,14 @@ impl Screen {
         let receive_button = buttons::Button::new("Receive", Some('r'));
         let send_button = buttons::Button::new("Send", Some('s')).disable();
 
-        let networks = buttons::Button::new("Networks", Some('n')).disable();
+        let networks = buttons::Button::new("Networks", Some('n'));
         let mut access_mnemonic = buttons::Button::new("Access mnemonic", Some('a'));
-        if session.get_seed_phrase().is_err() {
-            access_mnemonic.disabled = true;
+        if session.db.get_seed_phrase().is_err() {
+            access_mnemonic = access_mnemonic.disable();
         }
         let delete_account = buttons::Button::new("Delete Account", Some('d')).warning();
-        let manage_button = buttons::MenuButton::new(
-            "Manage", Some('m'), vec![networks, access_mnemonic, delete_account]
-        );
+        let manage_button = buttons::MenuButton::new("Manage", Some('m'),
+            vec![networks, access_mnemonic, delete_account]);
 
         let mode: Option<Box<dyn AppScreen + Send>> = Some(Box::new(
             super::porfolio_accounts::Screen::new(session.clone(), crypto.clone())));
@@ -86,9 +76,9 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(popup) = &mut self.popup {
-            if let Ok(ok) = popup.handle_event(event) {
+            if let Ok(ok) = popup.handle_event(event).await {
                 if ok {
                     self.popup = None;
                     return Ok(true);
@@ -100,9 +90,7 @@ impl AppScreen for Screen {
         if let Some(index) = self.manage_button.handle_event(&event) {
             match index {
                 0 => {
-                    // self.command_tx.send(AppCommand::SwitchScreen(Box::new(
-                    //     super::networks::Screen::new(self.command_tx.clone(), self.session.clone())
-                    // ))).unwrap();
+                    self.popup = Some(Box::new(super::super::popups::networks::Popup::new(self.crypto.clone())));
                     return Ok(true);
                 },
                 1 => {
@@ -131,7 +119,7 @@ impl AppScreen for Screen {
         }
 
         if let Some(mode) = &mut self.mode {
-            if let Ok(ok) = mode.handle_event(event.clone()) {
+            if let Ok(ok) = mode.handle_event(event.clone()).await {
                 if ok {
                     return Ok(true);
                 }
@@ -157,6 +145,10 @@ impl AppScreen for Screen {
     }
 
     async fn update(&mut self) {
+        if let Some(popup) = &mut self.popup {
+            popup.update().await;
+        }
+
         if let Some(mode) = &mut self.mode {
             mode.update().await;
         }
@@ -166,9 +158,9 @@ impl AppScreen for Screen {
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(SWITCH_HEIGHT),
+                Constraint::Length(buttons::SWITCH_HEIGHT),
                 Constraint::Fill(0), // Fill height for mode
-                Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Length(buttons::BUTTONS_HEIGHT),
             ])
             .split(area);
 

@@ -14,7 +14,6 @@ use crate::tui::widgets::{buttons, mnemonic};
 
 const MAX_IMPORT_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 2;
-const BUTTONS_ROW_HEIGHT: u16 = 3;
 
 const VALID_SEED_PHRASE: &str = "Your seed phrase was sucesfully imported! You may access it later in the app.";
 const INVALID_SEED_PHRASE: &str = "Your seed phrase is not correct! Please go back and fix it!";
@@ -64,7 +63,7 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(()) = self.back_button.handle_event(&event) {
             let words = self.mnemonic_words.words.clone();
             let index = words.len() - 1;
@@ -103,7 +102,7 @@ impl AppScreen for Screen {
             .constraints([
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Length(mnemonic::MNEMONIC_HEIGHT),
-                Constraint::Length(BUTTONS_ROW_HEIGHT),
+                Constraint::Length(buttons::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

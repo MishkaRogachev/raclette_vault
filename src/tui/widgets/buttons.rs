@@ -8,7 +8,8 @@ use ratatui::{
     Frame
 };
 
-const BUTTONS_HEIGHT: u16 = 3;
+pub const BUTTONS_HEIGHT: u16 = 3;
+pub const SWITCH_HEIGHT: u16 = 3;
 
 pub struct Button {
     pub label: String,
