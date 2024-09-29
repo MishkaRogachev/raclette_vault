@@ -35,19 +35,17 @@ impl Screen {
 
     fn get_summary_balance_str(&self) -> (String, bool) {
         let mut usd_summary = None;
-        let mut from_test_network = false;
+        let mut test_network = false;
         for account in &self.accounts {
-            if let Some(balance) = &account.balance {
-                usd_summary = Some(usd_summary.unwrap_or(0.0) + balance.usd_value);
-                if balance.from_test_network {
-                    from_test_network = true;
-                }
+            if let Some((_, usd_value, from_test_network)) = &account.get_total_balances() {
+                usd_summary = Some(usd_summary.unwrap_or(0.0) + usd_value);
+                test_network = test_network || *from_test_network;
             }
         }
         match usd_summary {
             Some(usd_summary) => (
-                format!("{} {:.2} USD", if from_test_network {"(Testnet) "} else { "" }, usd_summary),
-                from_test_network
+                format!("{} {:.2} USD", if test_network {"(Testnet) "} else { "" }, usd_summary),
+                test_network
             ),
             None => (String::from("Loading.."), false),
         }
@@ -64,7 +62,7 @@ impl AppScreen for Screen {
         let mut crypto = self.crypto.lock().await;
 
         for account in &mut self.accounts {
-            account.balance = crypto.get_eth_balance(account.address).await;
+            account.balances = crypto.get_eth_balances(account.address).await;
         }
 
         if self.last_update.is_none() || self.last_update.unwrap().elapsed() > UPDATE_INTERVAL {

@@ -3,12 +3,14 @@ use tokio::sync::RwLock;
 
 use crate::{core::{chain::Chain, provider::{Balance, Provider}}, persistence::db::Db};
 
+pub type ChainBalances = HashMap<Chain, Balance>;
+
 #[derive(Clone)]
 pub struct Crypto {
     db: Arc<Db>,
     endpoint_url: String,
     providers: HashMap<Chain, Provider>,
-    balances: Arc<RwLock<HashMap<web3::types::Address, Balance>>>,
+    balances: Arc<RwLock<HashMap<web3::types::Address, ChainBalances>>>,
 }
 
 impl Crypto {
@@ -57,7 +59,7 @@ impl Crypto {
         self.providers.keys().any(|chain| chain.is_test_network())
     }
 
-    pub async fn get_eth_balance(&self, account: web3::types::Address) -> Option<Balance> {
+    pub async fn get_eth_balances(&self, account: web3::types::Address) -> Option<ChainBalances> {
         let balances = self.balances.read().await;
         if let Some(balance) = balances.get(&account) {
             return Some(balance.clone());
@@ -67,21 +69,18 @@ impl Crypto {
 
     pub async fn fetch_eth_balances(&mut self, accounts: Vec<web3::types::Address>) {
         let balances = self.balances.clone();
-        let providers = self.providers.values().cloned().collect::<Vec<_>>();
+        let providers = self.providers.clone();
 
         tokio::spawn(async move {
-            let mut summaries: HashMap<web3::types::Address, Balance> = HashMap::new();
+            let mut chain_balances: HashMap<web3::types::Address, ChainBalances> = HashMap::new();
 
-            for provider in providers {
+            for (chain, provider) in providers {
                 for account in accounts.iter() {
                     let response = provider.get_eth_balance(*account).await;
                     match response {
                         Ok(balance) => {
-                            let summary = summaries.entry(*account).or_insert_with(
-                                || Balance::new(0.0, 0.0, "ETH", false));
-                            summary.value += balance.value;
-                            summary.usd_value += balance.usd_value;
-                            summary.from_test_network = summary.from_test_network || balance.from_test_network;
+                            let chain_balance = chain_balances.entry(*account).or_insert_with(HashMap::new);
+                            chain_balance.insert(chain.clone(), balance);
                         }
                         Err(_err) => {
                             // eprintln!("Failed to fetch balance for {}: {:?}", account, err);
@@ -89,7 +88,7 @@ impl Crypto {
                     }
                 }
             }
-            balances.write().await.extend(summaries);
+            balances.write().await.extend(chain_balances);
         });
     }
 

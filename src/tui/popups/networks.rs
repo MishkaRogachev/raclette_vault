@@ -167,6 +167,7 @@ impl AppScreen for Popup {
                 Constraint::Percentage(35),
             ])
             .split(content_layout[3]);
+        frame.render_widget(Clear, content_layout[3]);
 
         self.back_button.render(frame, buttons_layout[0]);
         self.restore_button.render(frame, buttons_layout[1]);

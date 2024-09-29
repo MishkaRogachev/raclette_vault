@@ -34,13 +34,6 @@ impl Chain {
     }
 
     pub fn is_test_network(&self) -> bool {
-        match self {
-            Chain::EthereumMainnet => false,
-            Chain::EthereumSepolia => true,
-            Chain::OptimismMainnet => false,
-            Chain::OptimismSepolia => true,
-            Chain::ArbitrumMainnet => false,
-            Chain::ArbitrumSepolia => true,
-        }
+        TESTNET_CHAINS.contains(self)
     }
 }

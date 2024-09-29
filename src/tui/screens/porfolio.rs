@@ -37,7 +37,7 @@ impl Screen {
         let crypto = Arc::new(Mutex::new(crypto));
 
         let mode_switch = buttons::MultiSwitch::new(vec![
-            buttons::Button::new("Accounts", Some('a')),
+            buttons::Button::new("Accounts", Some('a')).disable(),
             buttons::Button::new("Transactions", Some('t')).disable(),
             buttons::Button::new("Charts", Some('c')).disable(),
             buttons::Button::new("Settings", Some('s')).disable(),

@@ -33,10 +33,6 @@ impl Balance {
     pub fn new(value: f64, usd_value: f64, currency: &str, from_test_network: bool) -> Self {
         Self { value, usd_value, currency: currency.to_string(), from_test_network }
     }
-
-    pub fn to_string(&self) -> String {
-        format!("{:.6} {} ({:.2} USD)", self.value, self.currency, self.usd_value)
-    }
 }
 
 impl Chain {
@@ -76,7 +72,7 @@ impl Provider {
     }
 
     pub async fn get_eth_balance(&self, account: Address) -> anyhow::Result<Balance> {
-        let wei =  self.web3.eth().balance(account, None).await?;
+        let wei = self.web3.eth().balance(account, None).await?;
         let eth = wei_to_eth(wei);
         let usd_value = self.get_eth_usd_rate().await? * eth;
 
