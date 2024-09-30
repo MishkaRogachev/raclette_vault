@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{borrow::BorrowMut, collections::HashMap};
 
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEventKind},
@@ -18,6 +18,9 @@ pub const CHECKBOX_WIDTH: u16 = 5;
 
 const CHECKMARK_ON: &str = "x";
 const CHECKMARK_OFF: &str = " ";
+
+const BUSY_PERIOD: u128 = 250;
+const BUSY_SYMBOLS: [char; 7] = ['▚', '▞', '▘', '▝', '▗', '▖', '▘'];
 
 pub enum FocusableEvent {
     FocusChanged,
@@ -89,6 +92,11 @@ pub struct CheckBox {
 
 pub struct CheckList<T> {
     pub options: HashMap<T, CheckBox>
+}
+
+pub struct Busy {
+    label: String,
+    start_time: tokio::time::Instant,
 }
 
 impl Button {
@@ -663,5 +671,26 @@ where T: Eq + std::hash::Hash + Clone {
             checkbox.render(frame, checkbox_area);
             y_offset += CHECKBOX_HEIGHT;
         }
+    }
+}
+
+impl Busy {
+    pub fn new(label: &str) -> Self {
+        Self {
+            label: label.to_string(),
+            start_time: tokio::time::Instant::now(),
+        }
+    }
+
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        let elapsed = self.start_time.elapsed().as_millis();
+        let index = (elapsed / BUSY_PERIOD as u128 % BUSY_SYMBOLS.len() as u128) as usize;
+        let symbol = BUSY_SYMBOLS[index];
+        let text = format!("{} {}", self.label, symbol);
+
+        Paragraph::new(text)
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(Alignment::Right)
+            .render(area, frame.buffer_mut());
     }
 }

@@ -4,11 +4,11 @@ use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    widgets::Paragraph, Frame
+    widgets::{Paragraph, Widget}, Frame
 };
 
 use crate::service::{crypto:: Crypto, session::Session};
-use crate::tui::{widgets::account, app::AppScreen};
+use crate::tui::{widgets::{controls, account}, app::AppScreen};
 
 const SUMMARY_HEIGHT: u16 = 2;
 const SUMMARY_TEXT: &str = "Summary balance";
@@ -20,20 +20,23 @@ pub struct Screen {
     last_update: Option<tokio::time::Instant>,
 
     accounts: Vec<account::Account>,
+    busy: controls::Busy,
 }
 
 impl Screen {
     pub fn new(session: Session, crypto: Arc<Mutex<Crypto>>) -> Self {
         let accounts = vec![account::Account::new(session.account)];
+        let busy = controls::Busy::new("Loading..");
 
         Self {
             crypto,
             last_update: None,
             accounts,
+            busy,
         }
     }
 
-    fn get_summary_balance_str(&self) -> (String, bool) {
+    fn render_summary_balance_str(&mut self, frame: &mut Frame, area: Rect) {
         let mut usd_summary = None;
         let mut test_network = false;
         for account in &self.accounts {
@@ -43,11 +46,17 @@ impl Screen {
             }
         }
         match usd_summary {
-            Some(usd_summary) => (
-                format!("{} {:.2} USD", if test_network {"(Testnet) "} else { "" }, usd_summary),
-                test_network
-            ),
-            None => (String::from("Loading.."), false),
+            Some(usd_summary) => {
+                let balances_str = format!("{} {:.2} USD", if test_network {"(Testnet) "} else { "" }, usd_summary);
+                let balances_color = if test_network { Color::Red } else { Color::Yellow };
+                Paragraph::new(balances_str)
+                    .style(Style::default().fg(balances_color).add_modifier(ratatui::style::Modifier::BOLD))
+                    .alignment(Alignment::Right)
+                    .render(area, frame.buffer_mut());
+            },
+            None => {
+                self.busy.render(frame, area);
+            },
         }
     }
 }
@@ -92,15 +101,9 @@ impl AppScreen for Screen {
         let summary_label = Paragraph::new(SUMMARY_TEXT)
             .style(Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD))
             .alignment(Alignment::Left);
-
-        let (summary_balance, from_test_network) = self.get_summary_balance_str();
-        let balance_color = if from_test_network { Color::Red } else { Color::Yellow };
-        let balances_label = Paragraph::new(summary_balance)
-            .style(Style::default().fg(balance_color).add_modifier(ratatui::style::Modifier::BOLD))
-            .alignment(Alignment::Right);
-
         frame.render_widget(summary_label, summary[0]);
-        frame.render_widget(balances_label, summary[1]);
+
+        self.render_summary_balance_str(frame, summary[1]);
 
         let accounts_layout = Layout::default()
             .direction(Direction::Vertical)

@@ -1,24 +1,30 @@
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Widget},
     Frame
 };
 
 use crate::core::balance::Balances;
 
+use super::controls;
+
 pub struct Account {
     pub name: String,
     pub address: web3::types::Address,
     pub balances: Option<Balances>,
+    busy: controls::Busy,
 }
 
 impl Account {
     pub fn new(address: web3::types::Address) -> Self {
+        let busy = controls::Busy::new("Loading..");
+
         Self {
             name: "Master Keypair".to_string(), // TODO: account name
             address,
             balances: None,
+            busy,
         }
     }
 
@@ -38,11 +44,16 @@ impl Account {
         format!("ETH ({})", self.address.to_string()) // TODO: different blockchain
     }
 
-    fn get_account_balance_str(&self) -> (String, bool) {
+    fn render_total_balances(&mut self, frame: &mut Frame, area: Rect) {
         if let Some((total_value, total_usd, from_test_network)) = self.get_total_balances() {
-            (format!("{:.6} ETH ({:.2} USD)", total_value, total_usd), from_test_network)
+            let balances_str = format!("{:.6} ETH ({:.2} USD)", total_value, total_usd);
+            let balances_color = if from_test_network { Color::Red } else { Color::Yellow };
+            Paragraph::new(balances_str)
+                .style(Style::default().fg(balances_color).add_modifier(ratatui::style::Modifier::BOLD))
+                .alignment(Alignment::Right)
+                .render(area, frame.buffer_mut());
         } else {
-            ("Loading...".to_string(), false)
+            self.busy.render(frame, area);
         }
     }
 
@@ -71,17 +82,11 @@ impl Account {
             .split(tokens_layout[0]);
 
         let eth_label = Paragraph::new(self.get_account_str())
-        .style(Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD))
-        .alignment(Alignment::Left);
-
-        let (balance_str, from_test_network) = self.get_account_balance_str();
-        let balance_color = if from_test_network { Color::Red } else { Color::Yellow };
-        let balances_label = Paragraph::new(balance_str)
-            .style(Style::default().fg(balance_color).add_modifier(ratatui::style::Modifier::BOLD))
-            .alignment(Alignment::Right);
-
+            .style(Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD))
+            .alignment(Alignment::Left);
         frame.render_widget(eth_label, header_layout[1]);
-        frame.render_widget(balances_label, header_layout[2]);
+
+        self.render_total_balances(frame, header_layout[2]);
 
         for i in 0..balances_cnt {
             let token_layout = Layout::default()
