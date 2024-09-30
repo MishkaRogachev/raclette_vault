@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use crate::{core::seed_phrase::SeedPhrase, service::session::Session};
-use crate::tui::{widgets::{focus::{self, Focusable}, buttons, inputs}, app::{AppCommand, AppScreen}};
+use crate::tui::{widgets::controls::{self, Focusable}, app::{AppCommand, AppScreen}};
 
 const MAX_MNEM_DELETE_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
@@ -25,22 +25,22 @@ pub struct Screen {
     seed_phrase: SeedPhrase,
     word_index: usize,
 
-    input: inputs::Input,
-    back_button: buttons::Button,
-    reveal_button: buttons::SwapButton,
-    delete_button: buttons::Button,
+    input: controls::Input,
+    back_button: controls::Button,
+    reveal_button: controls::SwapButton,
+    delete_button: controls::Button,
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session, seed_phrase: SeedPhrase) -> Self {
         let word_index = rand::random::<usize>() % seed_phrase.get_words().len();
 
-        let mut input = inputs::Input::new("Enter word").masked();
-        let back_button = buttons::Button::new("Back", Some('b'));
-        let reveal_button = buttons::SwapButton::new(
-            buttons::Button::new("Reveal", Some('r')).warning(),
-            buttons::Button::new("Hide", Some('h')).primary());
-        let delete_button = buttons::Button::new("Delete", Some('d')).warning().disable();
+        let mut input = controls::Input::new("Enter word").masked();
+        let back_button = controls::Button::new("Back", Some('b'));
+        let reveal_button = controls::SwapButton::new(
+            controls::Button::new("Reveal", Some('r')).warning(),
+            controls::Button::new("Hide", Some('h')).primary());
+        let delete_button = controls::Button::new("Delete", Some('d')).warning().disable();
 
         input.set_focused(true);
         input.color = Color::Red;
@@ -61,7 +61,7 @@ impl Screen {
 #[async_trait::async_trait]
 impl AppScreen for Screen {
     async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
-        let scoped_event = focus::handle_scoped_event(&mut [&mut self.input], &event);
+        let scoped_event = controls::handle_scoped_event(&mut [&mut self.input], &event);
 
         let delete_action = || {
             self.session.db.delete_seed_phrase().expect("Failed to delete seed phrase");
@@ -71,10 +71,10 @@ impl AppScreen for Screen {
         };
         if let Some(event) = scoped_event {
             match event {
-                focus::FocusableEvent::FocusFinished => {
+                controls::FocusableEvent::FocusFinished => {
                     delete_action();
                 },
-                focus::FocusableEvent::Input(word) => {
+                controls::FocusableEvent::Input(word) => {
                     if let Some(phrase_word) = self.seed_phrase.get_words().get(self.word_index) {
                         let valid = word == *phrase_word;
                         self.delete_button.disabled = !valid;
@@ -127,7 +127,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(ERROR_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

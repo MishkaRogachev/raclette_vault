@@ -9,7 +9,7 @@ use ratatui::{
 
 use crate::core::seed_phrase::WordCount;
 use crate::tui::app::{AppCommand, AppScreen};
-use crate::tui::widgets::{buttons, ascii};
+use crate::tui::widgets::{controls, ascii};
 
 const MAX_IMPORT_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 3;
@@ -21,18 +21,18 @@ const OUTRO_TEXT: &str = "Next, you will be prompted to enter your seed phrase w
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     word_count: WordCount,
-    word_cnt_switch: buttons::MultiSwitch,
-    back_button: buttons::Button,
-    continue_button: buttons::Button,
+    word_cnt_switch: controls::MultiSwitch,
+    back_button: controls::Button,
+    continue_button: controls::Button,
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
         let word_count = WordCount::Words12;
-        let word_cnt_switch = buttons::MultiSwitch::new(vec![
-                buttons::Button::new("12 words", Some('1')), buttons::Button::new("24 words", Some('2'))]);
-        let back_button = buttons::Button::new("Back", Some('b'));
-        let continue_button = buttons::Button::new("Continue", Some('c'));
+        let word_cnt_switch = controls::MultiSwitch::new(vec![
+                controls::Button::new("12 words", Some('1')), controls::Button::new("24 words", Some('2'))]);
+        let back_button = controls::Button::new("Back", Some('b'));
+        let continue_button = controls::Button::new("Continue", Some('c'));
 
         Self {
             command_tx,
@@ -85,10 +85,10 @@ impl AppScreen for Screen {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(INTRO_HEIGHT),
-                Constraint::Length(buttons::SWITCH_HEIGHT),
+                Constraint::Length(controls::SWITCH_HEIGHT),
                 Constraint::Fill(0), // Logo
                 Constraint::Length(OUTRO_HEIGHT),
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

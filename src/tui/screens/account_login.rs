@@ -8,7 +8,7 @@ use ratatui::{
 use zeroize::Zeroizing;
 
 use crate::service::session::Session;
-use crate::tui::{widgets::{focus::{self, Focusable}, buttons, inputs}, app::{AppCommand, AppScreen}};
+use crate::tui::{widgets::controls::{self, Focusable}, app::{AppCommand, AppScreen}};
 
 const MAX_LOGIN_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
@@ -26,10 +26,10 @@ pub struct Screen {
     remaining_attempts: u8,
     pass_error: Option<String>,
 
-    input: inputs::Input,
-    back_button: buttons::Button,
-    reveal_button: buttons::SwapButton,
-    login_button: buttons::Button,
+    input: controls::Input,
+    back_button: controls::Button,
+    reveal_button: controls::SwapButton,
+    login_button: controls::Button,
 }
 
 impl Screen {
@@ -37,12 +37,12 @@ impl Screen {
         let remaining_attempts = MAX_PASSWORD_ATTEMPTS;
         let pass_error = None;
 
-        let mut input = inputs::Input::new("Enter password").masked();
-        let back_button = buttons::Button::new("Back", Some('b'));
-        let reveal_button = buttons::SwapButton::new(
-            buttons::Button::new("Reveal", Some('r')).warning(),
-            buttons::Button::new("Hide", Some('h')).primary());
-        let login_button = buttons::Button::new("Login", Some('l')).disable();
+        let mut input = controls::Input::new("Enter password").masked();
+        let back_button = controls::Button::new("Back", Some('b'));
+        let reveal_button = controls::SwapButton::new(
+            controls::Button::new("Reveal", Some('r')).warning(),
+            controls::Button::new("Hide", Some('h')).primary());
+        let login_button = controls::Button::new("Login", Some('l')).disable();
 
         input.set_focused(true);
 
@@ -62,7 +62,7 @@ impl Screen {
 #[async_trait::async_trait]
 impl AppScreen for Screen {
     async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
-        let scoped_event = focus::handle_scoped_event(&mut [&mut self.input], &event);
+        let scoped_event = controls::handle_scoped_event(&mut [&mut self.input], &event);
 
         let mut login_action = || {
             match Session::login(self.address, &self.input.value) {
@@ -85,11 +85,11 @@ impl AppScreen for Screen {
 
         if let Some(event) = scoped_event {
             match event {
-                focus::FocusableEvent::Input(word) => {
+                controls::FocusableEvent::Input(word) => {
                     self.login_button.disabled = word.is_empty();
                     return Ok(true);
                 },
-                focus::FocusableEvent::FocusFinished => {
+                controls::FocusableEvent::FocusFinished => {
                     login_action();
                     return Ok(true);
                 },
@@ -130,7 +130,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(ERROR_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

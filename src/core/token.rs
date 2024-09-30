@@ -8,6 +8,7 @@ pub struct Token {
 }
 
 impl Token {
+    #[allow(dead_code)]
     pub fn new(name: &str, symbol: &str, address: &str, decimals: u16) -> Self {
         Self {
             name: name.to_string(),

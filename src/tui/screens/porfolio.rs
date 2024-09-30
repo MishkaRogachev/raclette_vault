@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use crate::service::{session::Session, crypto::Crypto};
-use crate::tui::{widgets::buttons, app::{AppCommand, AppScreen}};
+use crate::tui::{widgets::controls, app::{AppCommand, AppScreen}};
 
 const POPUP_WIDTH: u16 = 60;
 const POPUP_HEIGHT: u16 = 30;
@@ -17,12 +17,12 @@ pub struct Screen {
     session: Session,
     crypto: Arc<Mutex<Crypto>>,
 
-    mode_switch: buttons::MultiSwitch,
+    mode_switch: controls::MultiSwitch,
     mode: Option<Box<dyn AppScreen + Send>>,
-    quit_button: buttons::Button,
-    receive_button: buttons::Button,
-    send_button: buttons::Button,
-    manage_button: buttons::MenuButton,
+    quit_button: controls::Button,
+    receive_button: controls::Button,
+    send_button: controls::Button,
+    manage_button: controls::MenuButton,
     popup: Option<Box<dyn AppScreen + Send>>,
 }
 
@@ -36,24 +36,24 @@ impl Screen {
         crypto.load_active_networks().expect("Failed to load active networks");
         let crypto = Arc::new(Mutex::new(crypto));
 
-        let mode_switch = buttons::MultiSwitch::new(vec![
-            buttons::Button::new("Accounts", Some('a')).disable(),
-            buttons::Button::new("Transactions", Some('t')).disable(),
-            buttons::Button::new("Charts", Some('c')).disable(),
-            buttons::Button::new("Settings", Some('s')).disable(),
+        let mode_switch = controls::MultiSwitch::new(vec![
+            controls::Button::new("Accounts", Some('a')).disable(),
+            controls::Button::new("Transactions", Some('t')).disable(),
+            controls::Button::new("Charts", Some('c')).disable(),
+            controls::Button::new("Settings", Some('s')).disable(),
         ]);
 
-        let quit_button = buttons::Button::new("Quit", Some('q'));
-        let receive_button = buttons::Button::new("Receive", Some('r'));
-        let send_button = buttons::Button::new("Send", Some('s')).disable();
+        let quit_button = controls::Button::new("Quit", Some('q'));
+        let receive_button = controls::Button::new("Receive", Some('r'));
+        let send_button = controls::Button::new("Send", Some('s')).disable();
 
-        let networks = buttons::Button::new("Networks", Some('n'));
-        let mut access_mnemonic = buttons::Button::new("Access mnemonic", Some('a'));
+        let networks = controls::Button::new("Networks", Some('n'));
+        let mut access_mnemonic = controls::Button::new("Access mnemonic", Some('a'));
         if session.db.get_seed_phrase().is_err() {
             access_mnemonic = access_mnemonic.disable();
         }
-        let delete_account = buttons::Button::new("Delete Account", Some('d')).warning();
-        let manage_button = buttons::MenuButton::new("Manage", Some('m'),
+        let delete_account = controls::Button::new("Delete Account", Some('d')).warning();
+        let manage_button = controls::MenuButton::new("Manage", Some('m'),
             vec![networks, access_mnemonic, delete_account]);
 
         let mode: Option<Box<dyn AppScreen + Send>> = Some(Box::new(
@@ -158,9 +158,9 @@ impl AppScreen for Screen {
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(buttons::SWITCH_HEIGHT),
+                Constraint::Length(controls::SWITCH_HEIGHT),
                 Constraint::Fill(0), // Fill height for mode
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(area);
 

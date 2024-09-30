@@ -10,7 +10,7 @@ use ratatui::{
 };
 
 use crate::{core::chain, service::crypto::Crypto};
-use crate::tui::{app::AppScreen, widgets::{buttons, options}};
+use crate::tui::{app::AppScreen, widgets::controls};
 
 const TITLE: &str = "Active Networks";
 const TESTNET_WARNING: &str = "Testnet mode";
@@ -22,11 +22,11 @@ pub struct Popup {
     is_testnet: bool,
     update_required: bool,
     has_changes: bool,
-    mainnet_options: options::CheckOptions<chain::Chain>,
-    testnet_options: options::CheckOptions<chain::Chain>,
-    back_button: buttons::Button,
-    restore_button: buttons::Button,
-    save_button: buttons::Button,
+    mainnet_check_list: controls::CheckList<chain::Chain>,
+    testnet_check_list: controls::CheckList<chain::Chain>,
+    back_button: controls::Button,
+    restore_button: controls::Button,
+    save_button: controls::Button,
 }
 
 impl Popup {
@@ -34,28 +34,28 @@ impl Popup {
         let mainnet_options = chain::MAINNET_CHAINS.iter().map(|chain| {
             let name = chain.get_display_name();
             let hotkey = name.chars().next();
-            (chain.clone(), options::CheckBox::new(name, false, hotkey))
+            (chain.clone(), controls::CheckBox::new(name, false, hotkey))
         }).collect();
-        let mainnet_options = options::CheckOptions::new(mainnet_options);
+        let mainnet_check_list = controls::CheckList::new(mainnet_options);
 
         let testnet_options = chain::TESTNET_CHAINS.iter().map(|chain| {
             let name = chain.get_display_name();
             let hotkey = name.chars().next();
-            (chain.clone(), options::CheckBox::new(name, false, hotkey).warning())
+            (chain.clone(), controls::CheckBox::new(name, false, hotkey).warning())
         }).collect();
-        let testnet_options = options::CheckOptions::new(testnet_options);
+        let testnet_check_list = controls::CheckList::new(testnet_options);
 
-        let back_button = buttons::Button::new("Back", Some('b'));
-        let restore_button = buttons::Button::new("Restore", Some('r')).disable();
-        let save_button = buttons::Button::new("Save", Some('s')).disable();
+        let back_button = controls::Button::new("Back", Some('b'));
+        let restore_button = controls::Button::new("Restore", Some('r')).disable();
+        let save_button = controls::Button::new("Save", Some('s')).disable();
 
         Self {
             crypto,
             is_testnet: false,
             update_required: true,
             has_changes: false,
-            mainnet_options,
-            testnet_options,
+            mainnet_check_list,
+            testnet_check_list,
             back_button,
             restore_button,
             save_button
@@ -67,14 +67,14 @@ impl Popup {
         let active_networks = crypto.get_active_networks();
         self.is_testnet = crypto.in_testnet();
 
-        self.mainnet_options.toggle_by_keys(&active_networks);
-        self.testnet_options.toggle_by_keys(&active_networks);
+        self.mainnet_check_list.toggle_by_keys(&active_networks);
+        self.testnet_check_list.toggle_by_keys(&active_networks);
     }
 
     async fn save_options(&mut self) {
         let mut crypto = self.crypto.lock().await;
-        let mut all_networks = self.mainnet_options.get_checked_keys();
-        all_networks.extend(self.testnet_options.get_checked_keys());
+        let mut all_networks = self.mainnet_check_list.get_checked_keys();
+        all_networks.extend(self.testnet_check_list.get_checked_keys());
         crypto.save_active_networks(all_networks)
             .await.expect("Failed to save active networks");
     }
@@ -83,12 +83,12 @@ impl Popup {
 #[async_trait::async_trait]
 impl AppScreen for Popup {
     async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
-        if let Some(_) = self.mainnet_options.handle_event(&event) {
+        if let Some(_) = self.mainnet_check_list.handle_event(&event) {
             self.has_changes = true;
             return Ok(false);
         }
 
-        if let Some(_) = self.testnet_options.handle_event(&event) {
+        if let Some(_) = self.testnet_check_list.handle_event(&event) {
             self.has_changes = true;
             return Ok(false);
         }
@@ -136,7 +136,7 @@ impl AppScreen for Popup {
                 Constraint::Length(1), // Margin
                 Constraint::Length(WARNING_HEIGHT),
                 Constraint::Fill(0), // Fill height for network options
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(inner_area);
 
@@ -156,8 +156,8 @@ impl AppScreen for Popup {
                 Constraint::Percentage(10),
             ])
             .split(content_layout[2]);
-        self.mainnet_options.render(frame, options_layout[1]);
-        self.testnet_options.render(frame, options_layout[2]);
+        self.mainnet_check_list.render(frame, options_layout[1]);
+        self.testnet_check_list.render(frame, options_layout[2]);
 
         let buttons_layout = Layout::default()
             .direction(Direction::Horizontal)

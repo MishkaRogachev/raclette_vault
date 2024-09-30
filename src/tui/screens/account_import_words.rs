@@ -9,7 +9,7 @@ use ratatui::{
 use zeroize::Zeroizing;
 
 use crate::core::seed_phrase::WordCount;
-use crate::tui::{app::{AppCommand, AppScreen}, widgets::{bars, buttons, focus::{self, Focusable}, inputs}};
+use crate::tui::{app::{AppCommand, AppScreen}, widgets::controls::{self, Focusable}};
 
 const MAX_IMPORT_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
@@ -26,23 +26,23 @@ pub struct Screen {
     words: Vec<Zeroizing<String>>,
     index: usize,
 
-    bar: bars::HProgress,
-    input: inputs::Input,
-    back_button: buttons::Button,
-    reveal_button: buttons::SwapButton,
-    next_button: buttons::Button,
+    bar: controls::ProgressBar,
+    input: controls::Input,
+    back_button: controls::Button,
+    reveal_button: controls::SwapButton,
+    next_button: controls::Button,
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, word_count: WordCount, words: Vec<Zeroizing<String>>, index: usize, revealed: bool) -> Self {
-        let bar = bars::HProgress::new(0, word_count as u64, index as u64);
-        let mut input = inputs::Input::new("Enter word").masked();
-        let back_button = buttons::Button::new("Back", Some('b'));
-        let mut reveal_button = buttons::SwapButton::new(
-            buttons::Button::new("Reveal", Some('r')).warning(),
-            buttons::Button::new("Hide", Some('h')).primary(),
+        let bar = controls::ProgressBar::new(0, word_count as u64, index as u64);
+        let mut input = controls::Input::new("Enter word").masked();
+        let back_button = controls::Button::new("Back", Some('b'));
+        let mut reveal_button = controls::SwapButton::new(
+            controls::Button::new("Reveal", Some('r')).warning(),
+            controls::Button::new("Hide", Some('h')).primary(),
         );
-        let mut next_button = buttons::Button::new("Next", Some('n'));
+        let mut next_button = controls::Button::new("Next", Some('n'));
 
         input.set_focused(true);
 
@@ -95,8 +95,8 @@ impl AppScreen for Screen {
             }
         };
 
-        if let Some(event) = focus::handle_scoped_event(&mut [&mut self.input], &event) {
-            if let focus::FocusableEvent::FocusFinished = event {
+        if let Some(event) = controls::handle_scoped_event(&mut [&mut self.input], &event) {
+            if let controls::FocusableEvent::FocusFinished = event {
                 if !self.input.value.is_empty() {
                     next_action(&self.input.value);
                     return Ok(true);
@@ -145,7 +145,7 @@ impl AppScreen for Screen {
                 Constraint::Length(INPUT_LABEL_HEIGHT),
                 Constraint::Length(INPUT_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

@@ -10,7 +10,7 @@ use zeroize::Zeroizing;
 
 use crate::core::seed_phrase::{WordCount, SeedPhrase};
 use crate::tui::app::{AppCommand, AppScreen};
-use crate::tui::widgets::{buttons, mnemonic};
+use crate::tui::widgets::{controls, mnemonic};
 
 const MAX_IMPORT_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 2;
@@ -24,9 +24,9 @@ pub struct Screen {
     word_count: WordCount,
 
     mnemonic_words: mnemonic::MnemonicWords,
-    back_button: buttons::Button,
-    reveal_button: buttons::SwapButton,
-    secure_button: buttons::Button,
+    back_button: controls::Button,
+    reveal_button: controls::SwapButton,
+    secure_button: controls::Button,
 }
 
 impl Screen {
@@ -38,12 +38,12 @@ impl Screen {
         };
 
         let mut mnemonic_words = mnemonic::MnemonicWords::new(words);
-        let back_button = buttons::Button::new("Back", Some('b'));
-        let reveal_button = buttons::SwapButton::new(
-            buttons::Button::new("Reveal", Some('r')).warning(),
-            buttons::Button::new("Hide", Some('h')).primary(),
+        let back_button = controls::Button::new("Back", Some('b'));
+        let reveal_button = controls::SwapButton::new(
+            controls::Button::new("Reveal", Some('r')).warning(),
+            controls::Button::new("Hide", Some('h')).primary(),
         );
-        let mut secure_button = buttons::Button::new("Secure", Some('s'));
+        let mut secure_button = controls::Button::new("Secure", Some('s'));
         if seed_phrase.is_none() {
             secure_button.disabled = true;
             mnemonic_words.color = Color::Red;
@@ -102,7 +102,7 @@ impl AppScreen for Screen {
             .constraints([
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Length(mnemonic::MNEMONIC_HEIGHT),
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

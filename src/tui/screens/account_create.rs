@@ -9,7 +9,7 @@ use ratatui::{
 
 use crate::core::seed_phrase::{SeedPhrase, WordCount};
 use crate::tui::app::{AppCommand, AppScreen};
-use crate::tui::widgets::{buttons, mnemonic};
+use crate::tui::widgets::{controls, mnemonic};
 
 const MAX_CREATE_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
@@ -20,24 +20,24 @@ pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     seed_phrase: SeedPhrase,
 
-    word_cnt_switch: buttons::MultiSwitch,
+    word_cnt_switch: controls::MultiSwitch,
     mnemonic_words: mnemonic::MnemonicWords,
-    back_button: buttons::Button,
-    reveal_button: buttons::SwapButton,
-    secure_button: buttons::Button,
+    back_button: controls::Button,
+    reveal_button: controls::SwapButton,
+    secure_button: controls::Button,
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, seed_phrase: SeedPhrase) -> Self {
-        let word_cnt_switch = buttons::MultiSwitch::new(vec![
-                buttons::Button::new("12 words", Some('1')), buttons::Button::new("24 words", Some('2'))]);
+        let word_cnt_switch = controls::MultiSwitch::new(vec![
+                controls::Button::new("12 words", Some('1')), controls::Button::new("24 words", Some('2'))]);
         let mnemonic_words = mnemonic::MnemonicWords::new(seed_phrase.get_words_zeroizing());
-        let back_button = buttons::Button::new("Back", Some('b'));
-        let reveal_button = buttons::SwapButton::new(
-            buttons::Button::new("Reveal", Some('r')).warning(),
-            buttons::Button::new("Hide", Some('h')).primary(),
+        let back_button = controls::Button::new("Back", Some('b'));
+        let reveal_button = controls::SwapButton::new(
+            controls::Button::new("Reveal", Some('r')).warning(),
+            controls::Button::new("Hide", Some('h')).primary(),
         );
-        let secure_button = buttons::Button::new("Secure", Some('s'));
+        let secure_button = controls::Button::new("Secure", Some('s'));
 
         Self {
             command_tx,
@@ -97,9 +97,9 @@ impl AppScreen for Screen {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(INTRO_HEIGHT),
-                Constraint::Length(buttons::SWITCH_HEIGHT),
+                Constraint::Length(controls::SWITCH_HEIGHT),
                 Constraint::Length(mnemonic::MNEMONIC_HEIGHT),
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

@@ -8,7 +8,7 @@ use ratatui::{
 };
 
 use crate::{core::seed_phrase::{WordCount, SeedPhrase}, service::session::Session};
-use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
+use crate::tui::{widgets::{controls, ascii}, app::{AppCommand, AppScreen}};
 
 const LOGO_HEIGHT: u16 = 20;
 const WARNING_HEIGHT: u16 = 1;
@@ -16,31 +16,31 @@ const WARNING_HEIGHT: u16 = 1;
 const WARNING_TEXT: &str = "Please don't use this wallet for real crypto!";
 
 enum ProcessActions {
-    Login { login_button: buttons::Button, account: web3::types::Address },
-    Create { import_button: buttons::Button, create_button: buttons::Button }
+    Login { login_button: controls::Button, account: web3::types::Address },
+    Create { import_button: controls::Button, create_button: controls::Button }
 }
 
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
 
-    quit_button: buttons::Button,
+    quit_button: controls::Button,
     process_actions: ProcessActions
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
-        let quit_button = buttons::Button::new("Quit", Some('q'));
+        let quit_button = controls::Button::new("Quit", Some('q'));
         let process_actions = {
             let accounts = Session::list_accounts().expect("Failed to list accounts");
             match accounts.len() {
                 0 => {
-                    let import_button = buttons::Button::new("Import Mnemonic", Some('i'));
-                    let create_button = buttons::Button::new("Create Account", Some('c'));
+                    let import_button = controls::Button::new("Import Mnemonic", Some('i'));
+                    let create_button = controls::Button::new("Create Account", Some('c'));
                     ProcessActions::Create { create_button, import_button }
                 },
                 1 => {
                     let account = accounts.first().unwrap().clone();
-                    let login_button = buttons::Button::new("Login", Some('l'));
+                    let login_button = controls::Button::new("Login", Some('l'));
                     ProcessActions::Login { login_button, account }
                 },
                 _ => panic!("Multiple accounts are not supported yet")
@@ -93,7 +93,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Max(LOGO_HEIGHT),
                 Constraint::Length(WARNING_HEIGHT),
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
                 Constraint::Min(0), // Fill height
             ])
             .split(area);

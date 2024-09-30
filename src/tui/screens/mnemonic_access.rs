@@ -9,7 +9,7 @@ use ratatui::{
 
 use crate::{core::seed_phrase::SeedPhrase, service::session::Session};
 use crate::tui::app::{AppCommand, AppScreen};
-use crate::tui::widgets::{buttons, mnemonic};
+use crate::tui::widgets::{controls, mnemonic};
 
 const MAX_MNEM_ACCESS_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 2;
@@ -22,9 +22,9 @@ pub struct Screen {
     seed_phrase: SeedPhrase,
 
     mnemonic_words: mnemonic::MnemonicWords,
-    back_button: buttons::Button,
-    reveal_button: buttons::SwapButton,
-    delete_button: buttons::Button,
+    back_button: controls::Button,
+    reveal_button: controls::SwapButton,
+    delete_button: controls::Button,
 }
 
 impl Screen {
@@ -32,12 +32,12 @@ impl Screen {
         let seed_phrase = session.db.get_seed_phrase().unwrap();
 
         let mnemonic_words = mnemonic::MnemonicWords::new(seed_phrase.get_words_zeroizing());
-        let back_button = buttons::Button::new("Back", Some('b'));
-        let reveal_button = buttons::SwapButton::new(
-            buttons::Button::new("Reveal", Some('r')).warning(),
-            buttons::Button::new("Hide", Some('h')).primary(),
+        let back_button = controls::Button::new("Back", Some('b'));
+        let reveal_button = controls::SwapButton::new(
+            controls::Button::new("Reveal", Some('r')).warning(),
+            controls::Button::new("Hide", Some('h')).primary(),
         );
-        let delete_button = buttons::Button::new("Delete Mnemonic", Some('d')).warning();
+        let delete_button = controls::Button::new("Delete Mnemonic", Some('d')).warning();
 
         Self {
             command_tx,
@@ -90,7 +90,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Length(mnemonic::MNEMONIC_HEIGHT),
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

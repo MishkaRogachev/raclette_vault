@@ -8,10 +8,8 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::{core::seed_phrase, service::session, tui::widgets::focus::Focusable};
-use crate::tui::app::{AppCommand, AppScreen};
-
-use crate::tui::widgets::{buttons, inputs, focus};
+use crate::{core::seed_phrase, service::session};
+use crate::tui::{app::{AppCommand, AppScreen}, widgets::controls::{self, Focusable}};
 
 const MAX_SECURE_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
@@ -28,22 +26,22 @@ pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     seed_phrase: seed_phrase::SeedPhrase,
 
-    first_input: inputs::Input,
-    second_input: inputs::Input,
-    back_button: buttons::Button,
-    reveal_button: buttons::SwapButton,
-    save_button: buttons::Button,
+    first_input: controls::Input,
+    second_input: controls::Input,
+    back_button: controls::Button,
+    reveal_button: controls::SwapButton,
+    save_button: controls::Button,
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, seed_phrase: seed_phrase::SeedPhrase) -> Self {
-        let mut first_input = inputs::Input::new("Enter password").masked();
-        let second_input = inputs::Input::new("Confirm password").masked();
-        let back_button = buttons::Button::new("Back", Some('b'));
-        let reveal_button = buttons::SwapButton::new(
-            buttons::Button::new("Reveal", Some('r')).warning(),
-            buttons::Button::new("Hide", Some('h')).primary());
-        let save_button = buttons::Button::new("Save", Some('s'));
+        let mut first_input = controls::Input::new("Enter password").masked();
+        let second_input = controls::Input::new("Confirm password").masked();
+        let back_button = controls::Button::new("Back", Some('b'));
+        let reveal_button = controls::SwapButton::new(
+            controls::Button::new("Reveal", Some('r')).warning(),
+            controls::Button::new("Hide", Some('h')).primary());
+        let save_button = controls::Button::new("Save", Some('s'));
 
         first_input.set_focused(true);
 
@@ -54,7 +52,7 @@ impl Screen {
 #[async_trait::async_trait]
 impl AppScreen for Screen {
     async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
-        let scoped_event = focus::handle_scoped_event(
+        let scoped_event = controls::handle_scoped_event(
             &mut [&mut self.first_input, &mut self.second_input], &event);
 
         let first_password = &self.first_input.value;
@@ -71,7 +69,7 @@ impl AppScreen for Screen {
         };
 
         if let Some(event) = scoped_event {
-            if let focus::FocusableEvent::FocusFinished = event {
+            if let controls::FocusableEvent::FocusFinished = event {
                 secure_action();
                 return Ok(true);
             }
@@ -137,7 +135,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(TIP_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

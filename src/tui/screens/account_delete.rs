@@ -8,7 +8,7 @@ use ratatui::{
 };
 
 use crate::service::session::Session;
-use crate::tui::{widgets::{buttons, ascii}, app::{AppCommand, AppScreen}};
+use crate::tui::{widgets::{controls, ascii}, app::{AppCommand, AppScreen}};
 
 const MAX_DELETE_WIDTH: u16 = 80;
 const SKULL_HEIGHT: u16 = 20;
@@ -20,14 +20,14 @@ pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     session: Session,
 
-    cancel_button: buttons::Button,
-    delete_button: buttons::Button,
+    cancel_button: controls::Button,
+    delete_button: controls::Button,
 }
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session) -> Self {
-        let cancel_button = buttons::Button::new("Cancel", Some('c')).primary();
-        let delete_button = buttons::Button::new("Delete Account", Some('d')).warning();
+        let cancel_button = controls::Button::new("Cancel", Some('c')).primary();
+        let delete_button = controls::Button::new("Delete Account", Some('d')).warning();
 
         Self { command_tx, session, cancel_button, delete_button }
     }
@@ -65,7 +65,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(SKULL_HEIGHT),
                 Constraint::Length(WARNING_HEIGHT),
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(centered_area);
 

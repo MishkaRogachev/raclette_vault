@@ -8,7 +8,7 @@ use ratatui::{
     Frame
 };
 
-use crate::tui::{widgets::buttons, app::AppScreen};
+use crate::tui::{widgets::controls, app::AppScreen};
 
 const ACCOUNT_HEIGHT: u16 = 2;
 
@@ -16,14 +16,14 @@ const TITLE: &str = "Receive Crypto";
 
 pub struct Popup {
     address: web3::types::Address,
-    back_button: buttons::Button,
-    copy_button: buttons::Button
+    back_button: controls::Button,
+    copy_button: controls::Button
 }
 
 impl Popup {
     pub fn new(address: web3::types::Address) -> Self {
-        let back_button = buttons::Button::new("Back", Some('b'));
-        let copy_button = buttons::Button::new("Copy To Clipboard", Some('c'));
+        let back_button = controls::Button::new("Back", Some('b'));
+        let copy_button = controls::Button::new("Copy To Clipboard", Some('c'));
 
         Self {
             address,
@@ -77,7 +77,7 @@ impl AppScreen for Popup {
                 Constraint::Length(1), // Margin
                 Constraint::Length(ACCOUNT_HEIGHT),
                 Constraint::Fill(0), // Fill height for QR code
-                Constraint::Length(buttons::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTONS_HEIGHT),
             ])
             .split(inner_area);
 
