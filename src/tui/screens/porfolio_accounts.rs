@@ -13,7 +13,7 @@ use crate::tui::{widgets::{controls, account}, app::AppScreen};
 const SUMMARY_HEIGHT: u16 = 2;
 const SUMMARY_TEXT: &str = "Summary balance";
 
-const UPDATE_INTERVAL: tokio::time::Duration = tokio::time::Duration::from_millis(2000);
+const UPDATE_INTERVAL: tokio::time::Duration = tokio::time::Duration::from_secs(10);
 
 pub struct Screen {
     crypto: Arc<Mutex<Crypto>>,
@@ -40,7 +40,7 @@ impl Screen {
         let mut usd_summary = None;
         let mut test_network = false;
         for account in &self.accounts {
-            if let Some((_, usd_value, from_test_network)) = &account.get_total_balances() {
+            if let Some((usd_value, from_test_network)) = &account.get_total_usd_balance() {
                 usd_summary = Some(usd_summary.unwrap_or(0.0) + usd_value);
                 test_network = test_network || *from_test_network;
             }

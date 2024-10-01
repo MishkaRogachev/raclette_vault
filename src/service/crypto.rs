@@ -6,6 +6,8 @@ use crate::{
     persistence::db::Db
 };
 
+const BALANCES_FETCH_PROVIDER_DELAY: std::time::Duration = std::time::Duration::from_millis(100);
+
 #[derive(Clone)]
 pub struct Crypto {
     db: Arc<Db>,
@@ -80,16 +82,26 @@ impl Crypto {
             for account in accounts.iter() {
                 let mut sum_balances: Balances = Vec::new();
                 for (_, provider) in providers.iter() {
-                    let response = provider.get_balances(*account, &token_list).await;
-                    match response {
-                        Ok(balances) => {
-                            sum_balances = Balance::extend_balances(&sum_balances, &balances);
+                    let balance = provider.get_eth_balance(*account).await;
+                    match balance {
+                        Ok(balance) => {
+                            sum_balances = Balance::extend_balances(&sum_balances, &vec![balance]);
                         }
                         Err(_err) => {
-                            // TODO: just log it
-                            // eprintln!("Failed to fetch balance for {}: {:?}", account, err);
+                            log::error!("Failed to fetch ETH balance for {}", account);
                         }
                     }
+
+                    let token_balances = provider.get_token_balances(*account, &token_list).await;
+                    match token_balances {
+                        Ok(token_balances) => {
+                            sum_balances = Balance::extend_balances(&sum_balances, &token_balances);
+                        }
+                        Err(_err) => {
+                            log::error!("Failed to fetch token balances for {}", account);
+                        }
+                    }
+                    tokio::time::sleep(BALANCES_FETCH_PROVIDER_DELAY).await;
                 }
                 account_balances.write().await.insert(*account, sum_balances);
             }

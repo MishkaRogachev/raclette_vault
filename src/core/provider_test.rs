@@ -40,20 +40,34 @@ mod tests {
     #[test_case(Chain::EthereumSepolia)]
     #[test_case(Chain::OptimismMainnet)]
     #[tokio::test]
-    async fn test_get_balances(chain: Chain) -> anyhow::Result<()> {
+    async fn test_get_eth_balance(chain: Chain) -> anyhow::Result<()> {
         let endpoint_url = get_endpoint_url()?;
-
-        let tokens = vec![
-            Token::new("Ethereum", "ETH"),
-        ];
 
         let account = web3::types::Address::from_low_u64_be(0);
         let provider = Provider::new(&endpoint_url, chain)?;
 
-        let balances = provider.get_balances(account, &tokens).await?;
-        assert_eq!(balances.len(), tokens.len());
-        assert_eq!(balances[0].currency, "ETH");
-        assert_ne!(balances[0].value, 0.0);
+        let balance = provider.get_eth_balance(account).await?;
+        assert_eq!(balance.currency, "ETH");
+        assert_ne!(balance.value, 0.0);
+
+        Ok(())
+    }
+
+    #[test_case("0x6B175474E89094C44Da98b954EedeAC495271d0F", "DAI", "Dai Stablecoin", 18)]
+    #[test_case("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606EB48", "USDC", "USD Coin", 6)]
+    #[test_case("0xdAC17F958D2ee523a2206206994597C13D831ec7", "USDT", "Tether USD", 6)]
+    #[tokio::test]
+    async fn test_get_token_balances(contract_address: &str, symbol: &str, name: &str, decimals: u16) -> anyhow::Result<()> {
+        let endpoint_url = get_endpoint_url()?;
+
+        let token = Token::new(name, symbol).with_chain_data(Chain::EthereumMainnet, contract_address.parse()?, decimals);
+
+        let account = web3::types::Address::from_low_u64_be(0);
+        let provider = Provider::new(&endpoint_url, Chain::EthereumMainnet)?;
+
+        let balances = provider.get_token_balances(account, &vec![token]).await?;
+        assert_eq!(balances.len(), 1);
+        assert_eq!(balances[0].currency, symbol);
 
         Ok(())
     }

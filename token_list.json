@@ -1,22 +1,4 @@
 [{
-        "name": "Ethereum",
-        "symbol": "ETH",
-        "chain_data": {
-            "EthereumMainnet": {
-                "contract_address": "0x0000000000000000000000000000000000000000",
-                "decimals": 18
-            },
-            "OptimismMainnet": {
-                "contract_address": "0x4200000000000000000000000000000000000006",
-                "decimals": 18
-            },
-            "ArbitrumMainnet": {
-                "contract_address": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
-                "decimals": 18
-            }
-        }
-    },
-    {
         "name": "Polygon",
         "symbol": "MATIC",
         "chain_data": {

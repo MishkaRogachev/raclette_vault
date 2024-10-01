@@ -28,11 +28,10 @@ impl Account {
         }
     }
 
-    pub fn get_total_balances(&self) -> Option<(f64, f64, bool)> {
+    pub fn get_total_usd_balance(&self) -> Option<(f64, bool)> {
         self.balances.as_ref().map(|balances| {
-            balances.iter().fold((0.0, 0.0, false), |(total_value, total_usd, from_test), balance| {
+            balances.iter().fold((0.0, false), |(total_usd, from_test), balance| {
                 (
-                    total_value + balance.value,
                     total_usd + balance.usd_value,
                     from_test || balance.from_test_network,
                 )
@@ -45,8 +44,8 @@ impl Account {
     }
 
     fn render_total_balances(&mut self, frame: &mut Frame, area: Rect) {
-        if let Some((total_value, total_usd, from_test_network)) = self.get_total_balances() {
-            let balances_str = format!("{:.6} ETH ({:.2} USD)", total_value, total_usd);
+        if let Some((total_usd, from_test_network)) = self.get_total_usd_balance() {
+            let balances_str = format!("{:.2} USD", total_usd);
             let balances_color = if from_test_network { Color::Red } else { Color::Yellow };
             Paragraph::new(balances_str)
                 .style(Style::default().fg(balances_color).add_modifier(ratatui::style::Modifier::BOLD))

@@ -69,42 +69,42 @@ impl Provider {
         Ok(result.answer as f64 / 10f64.powi(8))
     }
 
-    pub async fn get_balances(&self, account: Address, tokens: &TokenList) -> anyhow::Result<Balances> {
+    pub async fn get_eth_balance(&self, account: Address) -> anyhow::Result<Balance> {
+        let wei = self.web3.eth().balance(account, None).await?;
+        let eth = wei_to_eth(wei);
+        let eth_usd_rate = self.get_eth_usd_rate().await?;
+        Ok(Balance::new(eth, eth_usd_rate * eth, "ETH", self.chain.is_test_network()))
+    }
+
+    pub async fn get_token_balances(&self, account: Address, tokens: &TokenList) -> anyhow::Result<Balances> {
         let mut balances = Vec::new();
         let eth_usd_rate = self.get_eth_usd_rate().await?;
 
         for token in tokens {
-            let balance = if token.symbol == "ETH" {
-                // Handle ETH balance
-                let wei = self.web3.eth().balance(account, None).await?;
-                let eth = wei_to_eth(wei);
-                Balance::new(eth, eth_usd_rate * eth, &token.symbol, self.chain.is_test_network())
-            } else {
-                // Handle ERC-20 token balances
-                let token_chain_data = match token.get_chain_data(&self.chain) {
-                    Some(token_chain_data) => token_chain_data,
-                    None => continue,
-                };
-                let contract = match Contract::from_json(self.web3.eth(), token_chain_data.contract_address, ERC20_BALANCE_ABI) {
-                    Ok(contract) => contract,
-                    Err(_) => {
-                        log::warn!("Failed to create contract for token {} on {}", token.symbol, self.chain);
-                        continue
-                    },
-                };
-
-                let balance: U256 = match contract
-                    .query("balanceOf", (account,), None, Options::default(), None).await {
-                    Ok(balance) => balance,
-                    Err(_) => {
-                        log::warn!("Failed to get balance for token {} on {}", token.symbol, self.chain);
-                        continue
-                    },
-                };
-
-                let balance_f64 = balance.as_u128() as f64 / 10f64.powi(token_chain_data.decimals as i32);
-                Balance::new(balance_f64, balance_f64 * eth_usd_rate, &token.symbol, self.chain.is_test_network())
+            // Handle ERC-20 token balances
+            let token_chain_data = match token.get_chain_data(&self.chain) {
+                Some(token_chain_data) => token_chain_data,
+                None => continue,
             };
+            let contract = match Contract::from_json(self.web3.eth(), token_chain_data.contract_address, ERC20_BALANCE_ABI) {
+                Ok(contract) => contract,
+                Err(_) => {
+                    log::warn!("Failed to create contract for token {} on {}", token.symbol, self.chain);
+                    continue
+                },
+            };
+
+            let balance: U256 = match contract
+                .query("balanceOf", (account,), None, Options::default(), None).await {
+                Ok(balance) => balance,
+                Err(_) => {
+                    log::warn!("Failed to get balance for token {} on {}", token.symbol, self.chain);
+                    continue
+                },
+            };
+
+            let balance_f64 = balance.as_u128() as f64 / 10f64.powi(token_chain_data.decimals as i32);
+            let balance = Balance::new(balance_f64, balance_f64 * eth_usd_rate, &token.symbol, self.chain.is_test_network());
             balances.push(balance);
         }
         Ok(balances)
