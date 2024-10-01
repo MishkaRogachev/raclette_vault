@@ -26,3 +26,6 @@ bip39 = { version = "2.0.0", features = ["rand", "serde", "zeroize"] }
 copypasta = "0.10.1"
 qrcode = "0.14.1"
 directories = "5.0.1"
+log = "0.4.22"
+chrono = "0.4.38"
+flexi_logger = "0.29.0"

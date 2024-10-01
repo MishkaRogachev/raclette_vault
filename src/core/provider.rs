@@ -88,7 +88,7 @@ impl Provider {
                 let contract = match Contract::from_json(self.web3.eth(), token_chain_data.contract_address, ERC20_BALANCE_ABI) {
                     Ok(contract) => contract,
                     Err(_) => {
-                        // TODO: logger:log!("Failed to create contract for token {} on {}", token.symbol, self.chain);
+                        log::warn!("Failed to create contract for token {} on {}", token.symbol, self.chain);
                         continue
                     },
                 };
@@ -97,7 +97,7 @@ impl Provider {
                     .query("balanceOf", (account,), None, Options::default(), None).await {
                     Ok(balance) => balance,
                     Err(_) => {
-                        // TODO: logger:log!("Failed to get balance for token {} on {}", token.symbol, self.chain);
+                        log::warn!("Failed to get balance for token {} on {}", token.symbol, self.chain);
                         continue
                     },
                 };

@@ -25,3 +25,4 @@ Cargo.lock
 /target
 /.DS_Store
 /raclette_accounts
+/logs/*
