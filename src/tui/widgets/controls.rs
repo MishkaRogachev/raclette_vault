@@ -1,4 +1,4 @@
-use std::{borrow::BorrowMut, collections::HashMap};
+use std::collections::HashMap;
 
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEventKind},
@@ -20,7 +20,7 @@ const CHECKMARK_ON: &str = "x";
 const CHECKMARK_OFF: &str = " ";
 
 const BUSY_PERIOD: u128 = 250;
-const BUSY_SYMBOLS: [char; 7] = ['▚', '▞', '▘', '▝', '▗', '▖', '▘'];
+const BUSY_SYMBOLS: [char; 7] = ['▚', '▘', '▝', '▗', '▞', '▖', '▘'];
 
 pub enum FocusableEvent {
     FocusChanged,

@@ -1,6 +1,11 @@
-use web3::{contract::{Contract, Options}, transports::Http, types::{Address, U256}, Web3};
+use web3::{
+    contract::{Contract, Options},
+    transports::Http,
+    types::{Address, U256},
+    Web3
+};
 
-use super::{balance::{Balance, Balances}, chain::Chain, token::Token};
+use super::{balance::{Balance, Balances}, chain::Chain, token::{Token, TokenList}};
 
 const CHAINLINK_ABI: &[u8] = include_bytes!("../../abi/chainlink.json");
 const ERC20_BALANCE_ABI: &[u8] = include_bytes!("../../abi/erc20_balance.json");
@@ -29,22 +34,21 @@ impl Provider {
         Ok(Self {web3, chain})
     }
 
+    #[allow(dead_code)]
     pub async fn get_token_metadata(&self, contract_address: Address) -> anyhow::Result<Token> {
         let contract = Contract::from_json(self.web3.eth(), contract_address, ERC20_TOKENS_ABI)?;
 
         let name: String = contract
             .query("name", (), None, Options::default(), None)
             .await?;
-
         let symbol: String = contract
             .query("symbol", (), None, Options::default(), None)
             .await?;
-
         let decimals: U256 = contract
             .query("decimals", (), None, Options::default(), None)
             .await?;
 
-        Ok(Token::new(&name, &symbol, &contract_address.to_string(), decimals.as_u64() as u16))
+        Ok(Token::new(&name, &symbol).with_chain_data(self.chain, contract_address, decimals.as_u64() as u16))
     }
 
     async fn get_eth_usd_rate(&self) -> anyhow::Result<f64> {
@@ -65,7 +69,7 @@ impl Provider {
         Ok(result.answer as f64 / 10f64.powi(8))
     }
 
-    pub async fn get_balances(&self, account: Address, tokens: &Vec<Token>) -> anyhow::Result<Balances> {
+    pub async fn get_balances(&self, account: Address, tokens: &TokenList) -> anyhow::Result<Balances> {
         let mut balances = Vec::new();
         let eth_usd_rate = self.get_eth_usd_rate().await?;
 
@@ -77,21 +81,32 @@ impl Provider {
                 Balance::new(eth, eth_usd_rate * eth, &token.symbol, self.chain.is_test_network())
             } else {
                 // Handle ERC-20 token balances
-                let token_address = token.address.parse::<Address>()?;
-                let contract = Contract::from_json(self.web3.eth(), token_address, ERC20_BALANCE_ABI)?;
+                let token_chain_data = match token.get_chain_data(&self.chain) {
+                    Some(token_chain_data) => token_chain_data,
+                    None => continue,
+                };
+                let contract = match Contract::from_json(self.web3.eth(), token_chain_data.contract_address, ERC20_BALANCE_ABI) {
+                    Ok(contract) => contract,
+                    Err(_) => {
+                        // TODO: logger:log!("Failed to create contract for token {} on {}", token.symbol, self.chain);
+                        continue
+                    },
+                };
 
-                let balance: U256 = contract
-                    .query("balanceOf", (account,), None, Options::default(), None)
-                    .await?;
+                let balance: U256 = match contract
+                    .query("balanceOf", (account,), None, Options::default(), None).await {
+                    Ok(balance) => balance,
+                    Err(_) => {
+                        // TODO: logger:log!("Failed to get balance for token {} on {}", token.symbol, self.chain);
+                        continue
+                    },
+                };
 
-                let balance_f64 = balance.as_u128() as f64 / 10f64.powi(token.decimals as i32);
-                let usd_value = balance_f64 * self.get_eth_usd_rate().await?;
-                Balance::new(balance_f64, usd_value, &token.symbol, self.chain.is_test_network())
+                let balance_f64 = balance.as_u128() as f64 / 10f64.powi(token_chain_data.decimals as i32);
+                Balance::new(balance_f64, balance_f64 * eth_usd_rate, &token.symbol, self.chain.is_test_network())
             };
-
             balances.push(balance);
         }
-
         Ok(balances)
     }
 }

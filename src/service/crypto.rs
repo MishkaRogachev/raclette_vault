@@ -1,20 +1,23 @@
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
-use crate::{core::{balance::{Balance, Balances}, chain::Chain, provider::Provider, token::Token}, persistence::db::Db};
+use crate::{
+    core::{balance::{Balance, Balances}, chain::Chain, provider::Provider, token::TokenList},
+    persistence::db::Db
+};
 
 #[derive(Clone)]
 pub struct Crypto {
     db: Arc<Db>,
     endpoint_url: String,
-    token_list: Vec<Token>,
+    token_list: TokenList,
     providers: HashMap<Chain, Provider>,
     account_balances: Arc<RwLock<HashMap<web3::types::Address, Balances>>>,
 }
 
 impl Crypto {
     pub fn new(db: Arc<Db>, endpoint_url: &str) -> Self {
-        let token_list = serde_json::from_slice(include_bytes!("../../token_list.json")).unwrap();
+        let token_list: TokenList = serde_json::from_slice(include_bytes!("../../token_list.json")).unwrap();
         Self {
             db,
             endpoint_url: endpoint_url.to_string(),

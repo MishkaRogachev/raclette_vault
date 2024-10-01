@@ -63,3 +63,17 @@ impl Chain {
         .unwrap()
     }
 }
+
+impl std::fmt::Display for Chain {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let chain_name = match self {
+            Chain::EthereumMainnet => "Ethereum Mainnet",
+            Chain::EthereumSepolia => "Ethereum Sepolia",
+            Chain::OptimismMainnet => "Optimism Mainnet",
+            Chain::OptimismSepolia => "Optimism Sepolia",
+            Chain::ArbitrumMainnet => "Arbitrum Mainnet",
+            Chain::ArbitrumSepolia => "Arbitrum Sepolia",
+        };
+        write!(f, "{}", chain_name)
+    }
+}
