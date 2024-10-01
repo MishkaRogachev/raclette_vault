@@ -3,7 +3,8 @@ use web3::{contract::{Contract, Options}, transports::Http, types::{Address, U25
 use super::{balance::{Balance, Balances}, chain::Chain, token::Token};
 
 const CHAINLINK_ABI: &[u8] = include_bytes!("../../abi/chainlink.json");
-const ERC20_ABI: &[u8] = include_bytes!("../../abi/erc20.json");
+const ERC20_BALANCE_ABI: &[u8] = include_bytes!("../../abi/erc20_balance.json");
+const ERC20_TOKENS_ABI: &[u8] = include_bytes!("../../abi/erc20_tokens.json");
 
 #[derive(Clone)]
 pub struct Provider {
@@ -26,6 +27,24 @@ impl Provider {
         let transport = Http::new(&chain.finalize_endpoint_url(endpoint_url))?;
         let web3 = Web3::new(transport);
         Ok(Self {web3, chain})
+    }
+
+    pub async fn get_token_metadata(&self, contract_address: Address) -> anyhow::Result<Token> {
+        let contract = Contract::from_json(self.web3.eth(), contract_address, ERC20_TOKENS_ABI)?;
+
+        let name: String = contract
+            .query("name", (), None, Options::default(), None)
+            .await?;
+
+        let symbol: String = contract
+            .query("symbol", (), None, Options::default(), None)
+            .await?;
+
+        let decimals: U256 = contract
+            .query("decimals", (), None, Options::default(), None)
+            .await?;
+
+        Ok(Token::new(&name, &symbol, &contract_address.to_string(), decimals.as_u64() as u16))
     }
 
     async fn get_eth_usd_rate(&self) -> anyhow::Result<f64> {
@@ -59,7 +78,7 @@ impl Provider {
             } else {
                 // Handle ERC-20 token balances
                 let token_address = token.address.parse::<Address>()?;
-                let contract = Contract::from_json(self.web3.eth(), token_address, ERC20_ABI)?;
+                let contract = Contract::from_json(self.web3.eth(), token_address, ERC20_BALANCE_ABI)?;
 
                 let balance: U256 = contract
                     .query("balanceOf", (account,), None, Options::default(), None)
