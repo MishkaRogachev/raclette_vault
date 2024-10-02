@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 use ratatui::{
-    crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEventKind},
+    crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     layout::{Alignment, Constraint, Direction, Layout, Position, Rect},
     style::{Color, Modifier, Style, Stylize},
     symbols,
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, Gauge, Paragraph, Widget},
+    widgets::{Block, Borders, Clear, Gauge, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Widget},
     Frame
 };
 use zeroize::Zeroizing;
@@ -97,6 +97,12 @@ pub struct CheckList<T> {
 pub struct Busy {
     label: String,
     start_time: tokio::time::Instant,
+}
+
+pub struct Scroll {
+    pub total: usize,
+    pub visible: usize,
+    pub position: usize,
 }
 
 impl Button {
@@ -692,5 +698,59 @@ impl Busy {
             .style(Style::default().fg(Color::Yellow))
             .alignment(Alignment::Right)
             .render(area, frame.buffer_mut());
+    }
+}
+
+impl Scroll {
+    pub fn new() -> Self {
+        Self {
+            total: 0,
+            visible: 0,
+            position: 0,
+        }
+    }
+
+    pub fn handle_event(&mut self, event: &Event) -> Option<usize> {
+        if self.visible >= self.total {
+            return None;
+        }
+
+        match event {
+            Event::Key(KeyEvent { code: KeyCode::Up, .. }) |
+            Event::Mouse(MouseEvent { kind: MouseEventKind::ScrollUp, .. }) => {
+                if self.position > 0 {
+                    self.position -= 1;
+                    return Some(self.position);
+                }
+            },
+            Event::Key(KeyEvent { code: KeyCode::Down, .. }) |
+            Event::Mouse(MouseEvent { kind: MouseEventKind::ScrollDown, .. }) => {
+                if self.position < self.total - self.visible {
+                    self.position += 1;
+                    return Some(self.position);
+                }
+            },
+            _ => {}
+        }
+        None
+    }
+
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        self.visible = area.height as usize;
+
+        if self.total >= self.visible {
+            let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                .begin_symbol(Some("⬆"))
+                .end_symbol(Some("⬇"))
+                .track_symbol(None)
+                .style(Style::default().fg(Color::Yellow));
+
+            let mut scrollbar_state = ScrollbarState::new(self.total - self.visible)
+                .position(self.position);
+
+            frame.render_stateful_widget(scrollbar, area, &mut scrollbar_state);
+        } else {
+            self.position = 0;
+        }
     }
 }

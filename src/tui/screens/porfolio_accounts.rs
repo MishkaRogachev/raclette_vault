@@ -2,7 +2,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use ratatui::{
     crossterm::event::Event,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
     style::{Color, Style},
     widgets::{Paragraph, Widget}, Frame
 };
@@ -21,18 +21,21 @@ pub struct Screen {
 
     accounts: Vec<account::Account>,
     busy: controls::Busy,
+    scroll: controls::Scroll,
 }
 
 impl Screen {
     pub fn new(session: Session, crypto: Arc<Mutex<Crypto>>) -> Self {
         let accounts = vec![account::Account::new(session.account)];
         let busy = controls::Busy::new("Loading..");
+        let scroll = controls::Scroll::new();
 
         Self {
             crypto,
             last_update: None,
             accounts,
             busy,
+            scroll
         }
     }
 
@@ -63,8 +66,9 @@ impl Screen {
 
 #[async_trait::async_trait]
 impl AppScreen for Screen {
-    async fn handle_event(&mut self, _event: Event) -> anyhow::Result<bool> {
-        return Ok(false);
+    async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+        self.scroll.handle_event(&event);
+        Ok(false)
     }
 
     async fn update(&mut self) {
@@ -86,7 +90,7 @@ impl AppScreen for Screen {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(SUMMARY_HEIGHT),
-                Constraint::Fill(0), // Fill height for accounts
+                Constraint::Fill(0),    // Fill height for accounts
             ])
             .split(area);
 
@@ -108,10 +112,19 @@ impl AppScreen for Screen {
         let accounts_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints(self.accounts.iter().map(|_| Constraint::Fill(1)).collect::<Vec<_>>().as_slice())
-            .split(content_layout[1]);
+            .split(content_layout[1].inner(Margin {
+                vertical: 0,
+                horizontal: 1,
+            }));
+
+        let mut total_content_height = 0;
         for (account, account_layout) in self.accounts.iter_mut().zip(accounts_layout.iter()) {
+            account.scroll_offset = self.scroll.position;
             account.render(frame, *account_layout);
+            total_content_height += account.implicit_height();
         }
+
+        self.scroll.total = total_content_height;
+        self.scroll.render(frame, content_layout[1]);
     }
 }
-

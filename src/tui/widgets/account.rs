@@ -13,6 +13,7 @@ pub struct Account {
     pub name: String,
     pub address: web3::types::Address,
     pub balances: Option<Balances>,
+    pub scroll_offset: usize,
     busy: controls::Busy,
 }
 
@@ -24,8 +25,13 @@ impl Account {
             name: "Master Keypair".to_string(), // TODO: account name
             address,
             balances: None,
+            scroll_offset: 0,
             busy,
         }
+    }
+
+    pub fn implicit_height(&self) -> usize {
+        3 + if let Some(balances) = &self.balances { balances.len() } else { 0 }
     }
 
     pub fn get_total_usd_balance(&self) -> Option<(f64, bool)> {
@@ -88,6 +94,10 @@ impl Account {
         self.render_total_balances(frame, header_layout[2]);
 
         for i in 0..balances_cnt {
+            if self.scroll_offset + i >= balances_cnt {
+                break;
+            }
+
             let token_layout = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([
@@ -98,7 +108,8 @@ impl Account {
                 ])
                 .split(tokens_layout[i + 1]);
 
-            let token = &self.balances.as_ref().unwrap()[i];
+            // TODO: don't render extra items exeeding the height
+            let token = &self.balances.as_ref().unwrap()[i + self.scroll_offset];
             let token_label = Paragraph::new(format!("{}", token.currency))
                 .style(Style::default().fg(Color::Yellow))
                 .alignment(Alignment::Left);
