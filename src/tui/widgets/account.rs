@@ -9,6 +9,8 @@ use crate::core::balance::Balances;
 
 use super::controls;
 
+const HEADER_HEIGHT: usize = 3;
+
 pub struct Account {
     pub name: String,
     pub address: web3::types::Address,
@@ -31,7 +33,7 @@ impl Account {
     }
 
     pub fn implicit_height(&self) -> usize {
-        3 + if let Some(balances) = &self.balances { balances.len() } else { 0 }
+        HEADER_HEIGHT + if let Some(balances) = &self.balances { balances.len() } else { 0 }
     }
 
     pub fn get_total_usd_balance(&self) -> Option<(f64, bool)> {
@@ -71,9 +73,9 @@ impl Account {
         frame.render_widget(block, area);
 
         let balances_cnt = if let Some(balances) = &self.balances { balances.len() } else { 0 };
-        let tokens_layout = Layout::default()
+        let account_layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints((0..balances_cnt + 1).map(|_| Constraint::Length(1)).collect::<Vec<_>>())
+            .constraints([Constraint::Length(1), Constraint::Fill(1)])
             .split(inner_area);
 
         let header_layout = Layout::default()
@@ -84,7 +86,7 @@ impl Account {
                 Constraint::Fill(1),
                 Constraint::Length(1),
             ])
-            .split(tokens_layout[0]);
+            .split(account_layout[0]);
 
         let eth_label = Paragraph::new(self.get_account_str())
             .style(Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD))
@@ -93,11 +95,15 @@ impl Account {
 
         self.render_total_balances(frame, header_layout[2]);
 
-        for i in 0..balances_cnt {
-            if self.scroll_offset + i >= balances_cnt {
-                break;
-            }
+        let tokens_to_render = std::cmp::min(balances_cnt, area.height as usize - HEADER_HEIGHT);
+        let index_offset = self.scroll_offset.min(balances_cnt - tokens_to_render);
 
+        let tokens_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints((0..tokens_to_render).map(|_| Constraint::Length(1)).collect::<Vec<_>>())
+            .split(account_layout[1]);
+
+        for i in 0..tokens_to_render {
             let token_layout = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([
@@ -106,14 +112,12 @@ impl Account {
                     Constraint::Fill(1),
                     Constraint::Length(1),
                 ])
-                .split(tokens_layout[i + 1]);
+                .split(tokens_layout[i]);
 
-            // TODO: don't render extra items exeeding the height
-            let token = &self.balances.as_ref().unwrap()[i + self.scroll_offset];
+            let token = &self.balances.as_ref().unwrap()[i + index_offset];
             let token_label = Paragraph::new(format!("{}", token.currency))
                 .style(Style::default().fg(Color::Yellow))
                 .alignment(Alignment::Left);
-            // TODO: precision from token decimals
             let token_value_label = Paragraph::new(format!("{:.6} ({:.2} USD)", token.value, token.usd_value))
                 .style(Style::default().fg(Color::Yellow))
                 .alignment(Alignment::Right);
