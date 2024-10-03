@@ -40,8 +40,8 @@ impl Account {
         self.balances.as_ref().map(|balances| {
             balances.iter().fold((0.0, false), |(total_usd, from_test), balance| {
                 (
-                    total_usd + balance.usd_value,
-                    from_test || balance.from_test_network,
+                    total_usd + balance.summary().usd_value,
+                    from_test || balance.from_test_network(),
                 )
             })
         })
@@ -118,8 +118,11 @@ impl Account {
             let token_label = Paragraph::new(format!("{}", token.currency))
                 .style(Style::default().fg(Color::Yellow))
                 .alignment(Alignment::Left);
-            let token_value_label = Paragraph::new(format!("{:.6} ({:.2} USD)", token.value, token.usd_value))
-                .style(Style::default().fg(Color::Yellow))
+
+            let token_value = token.summary();
+            let token_value_color = if token.from_test_network() { Color::Red } else { Color::Yellow };
+            let token_value_label = Paragraph::new(format!("{:.6} ({:.2} USD)", token_value.value, token_value.usd_value))
+                .style(Style::default().fg(token_value_color))
                 .alignment(Alignment::Right);
 
             frame.render_widget(token_label, token_layout[1]);

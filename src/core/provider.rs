@@ -73,7 +73,7 @@ impl Provider {
         let wei = self.web3.eth().balance(account, None).await?;
         let eth = utils::wei_to_eth(wei);
         let eth_usd_rate = self.get_eth_usd_rate().await?;
-        Ok(Balance::new(eth, eth_usd_rate * eth, "ETH", self.chain.is_test_network()))
+        Ok(Balance::new("ETH", self.chain, eth, eth_usd_rate * eth))
     }
 
     pub async fn get_token_balances(&self, account: Address, tokens: &TokenList) -> anyhow::Result<Balances> {
@@ -104,11 +104,9 @@ impl Provider {
             };
 
             let balance_f64 = balance.as_u128() as f64 / 10f64.powi(token_chain_data.decimals as i32);
-            let balance = Balance::new(balance_f64, balance_f64 * eth_usd_rate, &token.symbol, self.chain.is_test_network());
+            let balance = Balance::new(&token.symbol, self.chain ,balance_f64, balance_f64 * eth_usd_rate);
             balances.push(balance);
         }
         Ok(balances)
     }
-
-    //pub async fn send_transaction
 }

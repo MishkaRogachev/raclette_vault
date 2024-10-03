@@ -85,7 +85,7 @@ impl Crypto {
                     let balance = provider.get_eth_balance(*account).await;
                     match balance {
                         Ok(balance) => {
-                            sum_balances = Balance::extend_balances(&sum_balances, &vec![balance]);
+                            sum_balances = Balance::extend_balances(sum_balances, &vec![balance]);
                         }
                         Err(_err) => {
                             log::error!("Failed to fetch ETH balance for {}", account);
@@ -95,7 +95,7 @@ impl Crypto {
                     let token_balances = provider.get_token_balances(*account, &token_list).await;
                     match token_balances {
                         Ok(token_balances) => {
-                            sum_balances = Balance::extend_balances(&sum_balances, &token_balances);
+                            sum_balances = Balance::extend_balances(sum_balances, &token_balances);
                         }
                         Err(_err) => {
                             log::error!("Failed to fetch token balances for {}", account);

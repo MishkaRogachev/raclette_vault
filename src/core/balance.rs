@@ -1,29 +1,51 @@
+use std::collections::HashMap;
+
+use super::chain::Chain;
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct BalanceValue {
+    pub value: f64,
+    pub usd_value: f64,
+}
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Balance {
-    pub value: f64,
-    pub usd_value: f64,
     pub currency: String,
-    pub from_test_network: bool,
+    pub chain_values: HashMap<Chain, BalanceValue>,
 }
 
 pub type Balances = Vec<Balance>;
 
+impl BalanceValue {
+    pub fn new(value: f64, usd_value: f64) -> Self {
+        Self { value, usd_value }
+    }
+}
+
 impl Balance {
-    pub fn new(value: f64, usd_value: f64, currency: &str, from_test_network: bool) -> Self {
-        Self { value, usd_value, currency: currency.to_string(), from_test_network }
+    pub fn new(currency: &str, chain: Chain, value: f64, usd_value: f64) -> Self {
+        let mut chain_values = HashMap::new();
+        chain_values.insert(chain, BalanceValue::new(value, usd_value));
+        Self { currency: currency.to_string(), chain_values }
     }
 
-    pub fn extend_balances(balances: &Vec<Self>, new_balances: &Vec<Self>) -> Vec<Self> {
-        let mut extended_balances = balances.clone();
-        for new_balance in new_balances {
-            if let Some(balance) = extended_balances.iter_mut().find(|b| b.currency == new_balance.currency) {
-                balance.value += new_balance.value;
-                balance.usd_value += new_balance.usd_value;
+    pub fn summary(&self) -> BalanceValue {
+        self.chain_values.values().fold(BalanceValue::new(0.0, 0.0), |acc, v| {
+            BalanceValue::new(acc.value + v.value, acc.usd_value + v.usd_value)
+        })
+    }
+
+    pub fn from_test_network(&self) -> bool {
+        self.chain_values.keys().any(|k| k.is_test_network())
+    }
+
+    pub fn extend_balances(mut balances: Vec<Self>, other_balances: &Vec<Self>) -> Vec<Self> {
+        for other in other_balances {
+            if let Some(balance) = balances.iter_mut().find(|b| b.currency == other.currency) {
+                balance.chain_values.extend(other.chain_values.clone());
             } else {
-                extended_balances.push(new_balance.clone());
+                balances.push(other.clone());
             }
         }
-        extended_balances
+        balances
     }
 }
