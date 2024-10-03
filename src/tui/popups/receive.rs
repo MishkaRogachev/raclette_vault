@@ -10,7 +10,7 @@ use ratatui::{
 
 use crate::tui::{widgets::controls, app::AppScreen};
 
-const ACCOUNT_HEIGHT: u16 = 2;
+const ACCOUNT_HEIGHT: u16 = 1;
 
 const TITLE: &str = "Receive Crypto";
 

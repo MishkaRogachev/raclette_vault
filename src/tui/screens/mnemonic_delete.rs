@@ -36,7 +36,7 @@ impl Screen {
         let word_index = rand::random::<usize>() % seed_phrase.get_words().len();
 
         let mut input = controls::Input::new("Enter word").masked();
-        let back_button = controls::Button::new("Back", Some('b'));
+        let back_button = controls::Button::new("Back", Some('b')).escape();
         let reveal_button = controls::SwapButton::new(
             controls::Button::new("Reveal", Some('r')).warning(),
             controls::Button::new("Hide", Some('h')).primary());

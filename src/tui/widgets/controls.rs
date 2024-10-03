@@ -20,7 +20,11 @@ const CHECKMARK_ON: &str = "x";
 const CHECKMARK_OFF: &str = " ";
 
 const BUSY_PERIOD: u128 = 250;
-const BUSY_SYMBOLS: [char; 7] = ['▚', '▘', '▝', '▗', '▞', '▖', '▘'];
+const BUSY_SYMBOLS: [char; 8] = ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘'];
+
+const SCROLL_UP_SYMBOL: &str = "⌃";
+const SCROLL_DOWN_SYMBOL: &str = "⌄";
+const SCROLL_THUMB_SYMBOL: &str = "┃";
 
 pub enum FocusableEvent {
     FocusChanged,
@@ -43,6 +47,8 @@ pub struct Button {
     pub active: bool,
     pub color: Color,
     pub is_hovered: bool,
+    pub default: bool,
+    pub escape: bool,
     area: Rect,
 }
 
@@ -114,6 +120,8 @@ impl Button {
             active: false,
             color: Color::Yellow,
             is_hovered: false,
+            default: false,
+            escape: false,
             area: Rect::default(),
         }
     }
@@ -133,6 +141,16 @@ impl Button {
         self
     }
 
+    pub fn default(mut self) -> Self {
+        self.default = true;
+        self
+    }
+
+    pub fn escape(mut self) -> Self {
+        self.escape = true;
+        self
+    }
+
     pub fn handle_event(&mut self, event: &Event) -> Option<()> {
         if self.disabled {
             return None;
@@ -147,6 +165,12 @@ impl Button {
                 None
             },
             Event::Key(key_event) => {
+                if self.default && key_event.code == KeyCode::Enter {
+                    return Some(());
+                }
+                if self.escape && key_event.code == KeyCode::Esc {
+                    return Some(());
+                }
                 if let Some(hotkey) = self.hotkey {
                     if key_event.code == KeyCode::Char(hotkey) {
                         return Some(());
@@ -161,9 +185,12 @@ impl Button {
     pub fn render(&mut self, frame: &mut Frame, area: Rect) {
         self.area = area; // Store the button's area for mouse handling
 
-        let mut style = Style::default().fg(self.color).add_modifier(Modifier::BOLD);
-        let mut block = Block::default().borders(Borders::ALL).border_style(style);
+        let mut style = Style::default().fg(self.color);
+        if self.default {
+            style = style.add_modifier(Modifier::BOLD);
+        }
 
+        let mut block = Block::default().borders(Borders::ALL).border_style(style);
         if self.disabled {
             block = block.dim();
         }
@@ -199,6 +226,18 @@ impl MultiSwitch {
     }
 
     pub fn handle_event(&mut self, event: &Event) -> Option<usize> {
+        if let Event::Key(key_event) = event {
+            if key_event.code == KeyCode::Tab {
+                let next_index = if self.active_index + 1 < self.options.len() {
+                    self.active_index + 1
+                } else {
+                    0
+                };
+                self.set_active(next_index);
+                return Some(next_index);
+            }
+        }
+
         for (i, button) in self.options.iter_mut().enumerate() {
             if let Some(()) = button.handle_event(event) {
                 self.set_active(i);
@@ -740,8 +779,9 @@ impl Scroll {
 
         if self.total >= self.visible {
             let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-                .begin_symbol(Some("⬆"))
-                .end_symbol(Some("⬇"))
+                .begin_symbol(Some(SCROLL_UP_SYMBOL))
+                .end_symbol(Some(SCROLL_DOWN_SYMBOL))
+                .thumb_symbol(SCROLL_THUMB_SYMBOL)
                 .track_symbol(None)
                 .style(Style::default().fg(Color::Yellow));
 

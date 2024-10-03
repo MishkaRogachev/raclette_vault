@@ -32,7 +32,7 @@ impl Screen {
         let seed_phrase = session.db.get_seed_phrase().unwrap();
 
         let mnemonic_words = mnemonic::MnemonicWords::new(seed_phrase.get_words_zeroizing());
-        let back_button = controls::Button::new("Back", Some('b'));
+        let back_button = controls::Button::new("Back", Some('b')).escape();
         let reveal_button = controls::SwapButton::new(
             controls::Button::new("Reveal", Some('r')).warning(),
             controls::Button::new("Hide", Some('h')).primary(),

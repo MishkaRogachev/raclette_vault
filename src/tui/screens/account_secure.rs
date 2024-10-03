@@ -37,11 +37,11 @@ impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, seed_phrase: seed_phrase::SeedPhrase) -> Self {
         let mut first_input = controls::Input::new("Enter password").masked();
         let second_input = controls::Input::new("Confirm password").masked();
-        let back_button = controls::Button::new("Back", Some('b'));
+        let back_button = controls::Button::new("Back", Some('b')).escape();
         let reveal_button = controls::SwapButton::new(
             controls::Button::new("Reveal", Some('r')).warning(),
             controls::Button::new("Hide", Some('h')).primary());
-        let save_button = controls::Button::new("Save", Some('s'));
+        let save_button = controls::Button::new("Save", Some('s')).default().disable();
 
         first_input.set_focused(true);
 

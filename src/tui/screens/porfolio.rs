@@ -43,7 +43,7 @@ impl Screen {
             controls::Button::new("Settings", Some('s')).disable(),
         ]);
 
-        let quit_button = controls::Button::new("Quit", Some('q'));
+        let quit_button = controls::Button::new("Quit", Some('q')).escape();
         let receive_button = controls::Button::new("Receive", Some('r'));
         let send_button = controls::Button::new("Send", Some('s')).disable();
 

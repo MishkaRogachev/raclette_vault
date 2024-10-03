@@ -31,8 +31,8 @@ impl Screen {
         let word_count = WordCount::Words12;
         let word_cnt_switch = controls::MultiSwitch::new(vec![
                 controls::Button::new("12 words", Some('1')), controls::Button::new("24 words", Some('2'))]);
-        let back_button = controls::Button::new("Back", Some('b'));
-        let continue_button = controls::Button::new("Continue", Some('c'));
+        let back_button = controls::Button::new("Back", Some('b')).escape();
+        let continue_button = controls::Button::new("Continue", Some('c')).default();
 
         Self {
             command_tx,

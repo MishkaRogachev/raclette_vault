@@ -38,12 +38,12 @@ impl Screen {
         };
 
         let mut mnemonic_words = mnemonic::MnemonicWords::new(words);
-        let back_button = controls::Button::new("Back", Some('b'));
+        let back_button = controls::Button::new("Back", Some('b')).escape();
         let reveal_button = controls::SwapButton::new(
             controls::Button::new("Reveal", Some('r')).warning(),
             controls::Button::new("Hide", Some('h')).primary(),
         );
-        let mut secure_button = controls::Button::new("Secure", Some('s'));
+        let mut secure_button = controls::Button::new("Secure", Some('s')).default();
         if seed_phrase.is_none() {
             secure_button.disabled = true;
             mnemonic_words.color = Color::Red;

@@ -26,7 +26,7 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session) -> Self {
-        let cancel_button = controls::Button::new("Cancel", Some('c')).primary();
+        let cancel_button = controls::Button::new("Cancel", Some('c')).primary().escape();
         let delete_button = controls::Button::new("Delete Account", Some('d')).warning();
 
         Self { command_tx, session, cancel_button, delete_button }

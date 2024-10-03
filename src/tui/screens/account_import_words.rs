@@ -37,12 +37,12 @@ impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, word_count: WordCount, words: Vec<Zeroizing<String>>, index: usize, revealed: bool) -> Self {
         let bar = controls::ProgressBar::new(0, word_count as u64, index as u64);
         let mut input = controls::Input::new("Enter word").masked();
-        let back_button = controls::Button::new("Back", Some('b'));
+        let back_button = controls::Button::new("Back", Some('b')).escape();
         let mut reveal_button = controls::SwapButton::new(
             controls::Button::new("Reveal", Some('r')).warning(),
             controls::Button::new("Hide", Some('h')).primary(),
         );
-        let mut next_button = controls::Button::new("Next", Some('n'));
+        let mut next_button = controls::Button::new("Next", Some('n')).default();
 
         input.set_focused(true);
 

@@ -38,11 +38,11 @@ impl Screen {
         let pass_error = None;
 
         let mut input = controls::Input::new("Enter password").masked();
-        let back_button = controls::Button::new("Back", Some('b'));
+        let back_button = controls::Button::new("Back", Some('b')).escape();
         let reveal_button = controls::SwapButton::new(
             controls::Button::new("Reveal", Some('r')).warning(),
             controls::Button::new("Hide", Some('h')).primary());
-        let login_button = controls::Button::new("Login", Some('l')).disable();
+        let login_button = controls::Button::new("Login", Some('l')).disable().default();
 
         input.set_focused(true);
 

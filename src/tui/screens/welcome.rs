@@ -29,18 +29,18 @@ pub struct Screen {
 
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>) -> Self {
-        let quit_button = controls::Button::new("Quit", Some('q'));
+        let quit_button = controls::Button::new("Quit", Some('q')).escape();
         let process_actions = {
             let accounts = Session::list_accounts().expect("Failed to list accounts");
             match accounts.len() {
                 0 => {
                     let import_button = controls::Button::new("Import Mnemonic", Some('i'));
-                    let create_button = controls::Button::new("Create Account", Some('c'));
+                    let create_button = controls::Button::new("Create Account", Some('c')).default();
                     ProcessActions::Create { create_button, import_button }
                 },
                 1 => {
                     let account = accounts.first().unwrap().clone();
-                    let login_button = controls::Button::new("Login", Some('l'));
+                    let login_button = controls::Button::new("Login", Some('l')).default();
                     ProcessActions::Login { login_button, account }
                 },
                 _ => panic!("Multiple accounts are not supported yet")
