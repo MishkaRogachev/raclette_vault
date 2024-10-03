@@ -9,7 +9,7 @@ use ratatui::{
     Frame
 };
 
-use crate::{core::chain, service::crypto::Crypto};
+use crate::{core::eth_chain, service::crypto::Crypto};
 use crate::tui::{app::AppScreen, widgets::controls};
 
 const TITLE: &str = "Active Networks";
@@ -22,8 +22,8 @@ pub struct Popup {
     is_testnet: bool,
     update_required: bool,
     has_changes: bool,
-    mainnet_check_list: controls::CheckList<chain::Chain>,
-    testnet_check_list: controls::CheckList<chain::Chain>,
+    mainnet_check_list: controls::CheckList<eth_chain::EthChain>,
+    testnet_check_list: controls::CheckList<eth_chain::EthChain>,
     back_button: controls::Button,
     restore_button: controls::Button,
     save_button: controls::Button,
@@ -31,14 +31,14 @@ pub struct Popup {
 
 impl Popup {
     pub fn new(crypto: Arc<Mutex<Crypto>>) -> Self {
-        let mainnet_options = chain::MAINNET_CHAINS.iter().map(|chain| {
+        let mainnet_options = eth_chain::MAINNET_CHAINS.iter().map(|chain| {
             let name = chain.get_display_name();
             let hotkey = name.chars().next();
             (chain.clone(), controls::CheckBox::new(name, false, hotkey))
         }).collect();
         let mainnet_check_list = controls::CheckList::new(mainnet_options);
 
-        let testnet_options = chain::TESTNET_CHAINS.iter().map(|chain| {
+        let testnet_options = eth_chain::TESTNET_CHAINS.iter().map(|chain| {
             let name = chain.get_display_name();
             let hotkey = name.chars().next();
             (chain.clone(), controls::CheckBox::new(name, false, hotkey).warning())

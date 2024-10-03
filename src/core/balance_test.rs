@@ -1,16 +1,16 @@
 #[cfg(test)]
 mod tests {
-    use super::super::{balance::Balance, chain::Chain};
+    use super::super::{balance::Balance, eth_chain::EthChain};
 
     #[test]
     fn test_extend_balances() {
         let balances = vec![
-            Balance::new("ETH", Chain::ArbitrumMainnet, 0.5, 1300.0),
-            Balance::new("USDC", Chain::ArbitrumMainnet, 50.0, 50.0),
+            Balance::new("ETH", EthChain::ArbitrumMainnet, 0.5, 1300.0),
+            Balance::new("USDC", EthChain::ArbitrumMainnet, 50.0, 50.0),
         ];
         let new_balances = vec![
-            Balance::new("ETH", Chain::OptimismMainnet, 0.25, 0.0),
-            Balance::new("DAI", Chain::OptimismMainnet, 100.0, 100.0),
+            Balance::new("ETH", EthChain::OptimismMainnet, 0.25, 0.0),
+            Balance::new("DAI", EthChain::OptimismMainnet, 100.0, 100.0),
         ];
         let extended_balances = Balance::extend_balances(balances, &new_balances);
         assert_eq!(extended_balances.len(), 3);

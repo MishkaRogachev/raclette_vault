@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use web3::types::Address;
 
-use super::chain::Chain;
+use super::eth_chain::EthChain;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct TokenOnChainData {
@@ -13,7 +13,7 @@ pub struct TokenOnChainData {
 pub struct Token {
     pub name: String,
     pub symbol: String,
-    pub chain_data: HashMap<Chain, TokenOnChainData>,
+    pub chain_data: HashMap<EthChain, TokenOnChainData>,
 }
 
 pub type TokenList = Vec<Token>;
@@ -28,7 +28,7 @@ impl Token {
         }
     }
 
-    pub fn with_chain_data(mut self, chain: Chain, contract_address: Address, decimals: u16) -> Self {
+    pub fn with_chain_data(mut self, chain: EthChain, contract_address: Address, decimals: u16) -> Self {
         self.chain_data.insert(
             chain,
             TokenOnChainData {
@@ -39,7 +39,7 @@ impl Token {
         self
     }
 
-    pub fn get_chain_data(&self, chain: &Chain) -> Option<&TokenOnChainData> {
+    pub fn get_chain_data(&self, chain: &EthChain) -> Option<&TokenOnChainData> {
         self.chain_data.get(chain)
     }
 

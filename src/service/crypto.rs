@@ -1,8 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
+use web3::transports::Http;
 
 use crate::{
-    core::{balance::{Balance, Balances}, chain::Chain, provider::Provider, token::TokenList},
+    core::{balance::{Balance, Balances}, eth_chain::EthChain, provider::Provider, token::TokenList},
     persistence::db::Db
 };
 
@@ -13,7 +14,7 @@ pub struct Crypto {
     pub db: Arc<Db>,
     pub endpoint_url: String,
     pub token_list: TokenList,
-    pub providers: HashMap<Chain, Provider>,
+    pub providers: HashMap<EthChain, Provider<Http>>,
     pub account_balances: Arc<RwLock<HashMap<web3::types::Address, Balances>>>,
 }
 
@@ -29,7 +30,7 @@ impl Crypto {
         }
     }
 
-    fn set_active_networks_impl(&mut self, chains: Vec<Chain>) -> anyhow::Result<()> {
+    fn set_active_networks_impl(&mut self, chains: Vec<EthChain>) -> anyhow::Result<()> {
         let old_chains = self.providers.keys().cloned().collect::<Vec<_>>();
         for chain in &old_chains {
             if !chains.contains(&chain) {
@@ -38,14 +39,15 @@ impl Crypto {
         }
         for chain in &chains {
             if !old_chains.contains(chain) {
-                let provider = Provider::new(&self.endpoint_url, chain.clone())?;
+                let transport = Http::new(&chain.finalize_endpoint_url(&self.endpoint_url))?;
+                let provider = Provider::new(transport, chain.clone())?;
                 self.providers.insert(chain.clone(), provider);
             }
         }
         Ok(())
     }
 
-    pub async fn save_active_networks(&mut self, chains: Vec<Chain>) -> anyhow::Result<()> {
+    pub async fn save_active_networks(&mut self, chains: Vec<EthChain>) -> anyhow::Result<()> {
         self.set_active_networks_impl(chains.clone())?;
         self.db.save_active_networks(&chains)?;
         self.invalidate_balances().await;
@@ -57,7 +59,7 @@ impl Crypto {
         self.set_active_networks_impl(chains)
     }
 
-    pub fn get_active_networks(&self) -> Vec<Chain> {
+    pub fn get_active_networks(&self) -> Vec<EthChain> {
         self.providers.keys().cloned().collect()
     }
 

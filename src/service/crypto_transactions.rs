@@ -1,6 +1,6 @@
 use web3::{signing::SecretKey, types::{Address, TransactionParameters, H256, U64}};
 
-use crate::core::{chain::Chain, eth_utils};
+use crate::core::{eth_chain::EthChain, eth_utils};
 use super::crypto::Crypto;
 
 const ERR_NO_TRANSACTION_FOUND: &str = "No transaction found";
@@ -11,7 +11,7 @@ pub struct TransactionRequest {
     to: Address,
     value: f64,
     currency: String,
-    chain: Chain,
+    chain: EthChain,
 }
 
 pub struct TransactionResponse {
@@ -21,7 +21,7 @@ pub struct TransactionResponse {
     pub to: Option<Address>,
     pub amount: f64,
     pub fee: f64,
-    pub chain: Chain,
+    pub chain: EthChain,
     pub successed: bool,
 }
 

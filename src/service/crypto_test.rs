@@ -2,7 +2,7 @@
 mod tests {
     use std::sync::Arc;
 
-    use crate::{core::chain::Chain, persistence::db::Db};
+    use crate::{core::eth_chain::EthChain, persistence::db::Db};
     use super::super::crypto::Crypto;
 
     fn create_test_db() -> anyhow::Result<Db> {
@@ -25,12 +25,12 @@ mod tests {
         crypto.load_active_networks()?;
         assert_eq!(crypto.get_active_networks().len(), 0);
 
-        crypto.save_active_networks(vec![Chain::EthereumMainnet, Chain::ArbitrumMainnet]).await?;
+        crypto.save_active_networks(vec![EthChain::EthereumMainnet, EthChain::ArbitrumMainnet]).await?;
         assert_eq!(crypto.get_active_networks().len(), 2);
 
-        assert!(crypto.get_active_networks().contains(&Chain::EthereumMainnet));
-        assert!(crypto.get_active_networks().contains(&Chain::ArbitrumMainnet));
-        assert!(!crypto.get_active_networks().contains(&Chain::OptimismSepolia));
+        assert!(crypto.get_active_networks().contains(&EthChain::EthereumMainnet));
+        assert!(crypto.get_active_networks().contains(&EthChain::ArbitrumMainnet));
+        assert!(!crypto.get_active_networks().contains(&EthChain::OptimismSepolia));
 
         Ok(())
     }

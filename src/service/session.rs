@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::core::{chain, key_pair::KeyPair, seed_phrase::SeedPhrase};
+use crate::core::{eth_chain, key_pair::KeyPair, seed_phrase::SeedPhrase};
 use crate::persistence::{db::Db, manage};
 use crate::utils;
 
@@ -23,7 +23,7 @@ impl Session {
 
         db.save_seed_phrase(seed_phrase)?;
         db.save_keypair(&keypair)?;
-        db.save_active_networks(&chain::MAINNET_CHAINS)?;
+        db.save_active_networks(&eth_chain::MAINNET_CHAINS)?;
 
         Ok(Session {
             account,

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::chain::Chain;
+use super::eth_chain::EthChain;
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BalanceValue {
     pub value: f64,
@@ -10,7 +10,7 @@ pub struct BalanceValue {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Balance {
     pub currency: String,
-    pub chain_values: HashMap<Chain, BalanceValue>,
+    pub chain_values: HashMap<EthChain, BalanceValue>,
 }
 
 pub type Balances = Vec<Balance>;
@@ -22,7 +22,7 @@ impl BalanceValue {
 }
 
 impl Balance {
-    pub fn new(currency: &str, chain: Chain, value: f64, usd_value: f64) -> Self {
+    pub fn new(currency: &str, chain: EthChain, value: f64, usd_value: f64) -> Self {
         let mut chain_values = HashMap::new();
         chain_values.insert(chain, BalanceValue::new(value, usd_value));
         Self { currency: currency.to_string(), chain_values }

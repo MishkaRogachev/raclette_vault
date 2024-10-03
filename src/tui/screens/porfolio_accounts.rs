@@ -72,7 +72,7 @@ impl AppScreen for Screen {
     }
 
     async fn update(&mut self) {
-        let mut crypto = self.crypto.lock().await;
+        let crypto = self.crypto.lock().await;
 
         for account in &mut self.accounts {
             account.balances = crypto.get_balances(account.address).await;
