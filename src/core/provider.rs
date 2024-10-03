@@ -1,11 +1,12 @@
 use web3::{
     contract::{Contract, Options},
+    signing::SecretKey,
     transports::Http,
-    types::{Address, U256},
+    types::{Address, Transaction, TransactionId, TransactionParameters, TransactionReceipt, H256, U256},
     Web3
 };
 
-use super::{utils, balance::{Balance, Balances}, chain::Chain, token::{Token, TokenList}};
+use super::{balance::{Balance, Balances}, chain::Chain, token::{Token, TokenList}, eth_utils};
 
 const CHAINLINK_ABI: &[u8] = include_bytes!("../../abi/chainlink.json");
 const ERC20_BALANCE_ABI: &[u8] = include_bytes!("../../abi/erc20_balance.json");
@@ -71,7 +72,7 @@ impl Provider {
 
     pub async fn get_eth_balance(&self, account: Address) -> anyhow::Result<Balance> {
         let wei = self.web3.eth().balance(account, None).await?;
-        let eth = utils::wei_to_eth(wei);
+        let eth = eth_utils::wei_to_eth(wei);
         let eth_usd_rate = self.get_eth_usd_rate().await?;
         Ok(Balance::new("ETH", self.chain, eth, eth_usd_rate * eth))
     }
@@ -108,5 +109,29 @@ impl Provider {
             balances.push(balance);
         }
         Ok(balances)
+    }
+
+    pub async fn send_transaction(&self, transaction: TransactionParameters, secret_key: &SecretKey) -> anyhow::Result<H256> {
+        let signed = self.web3.accounts()
+            .sign_transaction(transaction, secret_key)
+            .await?;
+        let tx_hash = self.web3.eth()
+            .send_raw_transaction(signed.raw_transaction)
+            .await?;
+        Ok(tx_hash)
+    }
+
+    pub async fn get_transaction(&self, tx_hash: H256) -> anyhow::Result<Option<Transaction>> {
+        match self.web3.eth().transaction(TransactionId::Hash(tx_hash)).await {
+            Ok(receipt) => Ok(receipt),
+            Err(err) => Err(anyhow::anyhow!("Failed to get transaction: {}", err)),
+        }
+    }
+
+    pub async fn get_transaction_receipt(&self, tx_hash: H256) -> anyhow::Result<Option<TransactionReceipt>> {
+        match self.web3.eth().transaction_receipt(tx_hash).await {
+            Ok(receipt) => Ok(receipt),
+            Err(err) => Err(anyhow::anyhow!("Failed to get transaction receipt: {}", err)),
+        }
     }
 }

@@ -10,11 +10,11 @@ const BALANCES_FETCH_PROVIDER_DELAY: std::time::Duration = std::time::Duration::
 
 #[derive(Clone)]
 pub struct Crypto {
-    db: Arc<Db>,
-    endpoint_url: String,
-    token_list: TokenList,
-    providers: HashMap<Chain, Provider>,
-    account_balances: Arc<RwLock<HashMap<web3::types::Address, Balances>>>,
+    pub db: Arc<Db>,
+    pub endpoint_url: String,
+    pub token_list: TokenList,
+    pub providers: HashMap<Chain, Provider>,
+    pub account_balances: Arc<RwLock<HashMap<web3::types::Address, Balances>>>,
 }
 
 impl Crypto {
@@ -73,7 +73,7 @@ impl Crypto {
         None
     }
 
-    pub async fn fetch_balances(&mut self, accounts: Vec<web3::types::Address>) {
+    pub async fn fetch_balances(&self, accounts: Vec<web3::types::Address>) {
         let account_balances = self.account_balances.clone();
         let providers = self.providers.clone();
         let token_list = self.token_list.clone();
@@ -108,7 +108,7 @@ impl Crypto {
         });
     }
 
-    pub async fn invalidate_balances(&mut self) {
+    pub async fn invalidate_balances(&self) {
         let mut balances = self.account_balances.write().await;
         balances.clear();
     }
