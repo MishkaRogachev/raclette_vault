@@ -1,3 +1,5 @@
+pub mod utils;
+mod utils_test;
 pub mod key_pair;
 mod key_pair_test;
 pub mod seed_phrase;

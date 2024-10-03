@@ -5,7 +5,7 @@ use web3::{
     Web3
 };
 
-use super::{balance::{Balance, Balances}, chain::Chain, token::{Token, TokenList}};
+use super::{utils, balance::{Balance, Balances}, chain::Chain, token::{Token, TokenList}};
 
 const CHAINLINK_ABI: &[u8] = include_bytes!("../../abi/chainlink.json");
 const ERC20_BALANCE_ABI: &[u8] = include_bytes!("../../abi/erc20_balance.json");
@@ -71,7 +71,7 @@ impl Provider {
 
     pub async fn get_eth_balance(&self, account: Address) -> anyhow::Result<Balance> {
         let wei = self.web3.eth().balance(account, None).await?;
-        let eth = wei_to_eth(wei);
+        let eth = utils::wei_to_eth(wei);
         let eth_usd_rate = self.get_eth_usd_rate().await?;
         Ok(Balance::new(eth, eth_usd_rate * eth, "ETH", self.chain.is_test_network()))
     }
@@ -109,10 +109,6 @@ impl Provider {
         }
         Ok(balances)
     }
-}
 
-fn wei_to_eth(wei: U256) -> f64 {
-    let ether = web3::types::U256::exp10(18); // 1 Ether = 10^18 Wei
-    let eth_value = wei.as_u128() as f64 / ether.as_u128() as f64;
-    eth_value
+    //pub async fn send_transaction
 }
