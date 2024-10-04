@@ -15,7 +15,6 @@ const MAX_IMPORT_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
 const PROGRESS_HEIGHT: u16 = 3;
 const INPUT_LABEL_HEIGHT: u16 = 1;
-const INPUT_HEIGHT: u16 = 3;
 
 const INTRO_TEXT: &str = "Importing your seed phrase";
 const LABEL_TEXT: &str = "Enter word";
@@ -143,9 +142,9 @@ impl AppScreen for Screen {
                 Constraint::Length(PROGRESS_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INPUT_LABEL_HEIGHT),
-                Constraint::Length(INPUT_HEIGHT),
+                Constraint::Length(controls::INPUT_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(controls::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTON_HEIGHT),
             ])
             .split(centered_area);
 

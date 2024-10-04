@@ -11,10 +11,11 @@ use ratatui::{
 };
 use zeroize::Zeroizing;
 
-pub const BUTTONS_HEIGHT: u16 = 3;
+pub const BUTTON_HEIGHT: u16 = 3;
 pub const SWITCH_HEIGHT: u16 = 3;
 pub const CHECKBOX_HEIGHT: u16 = 3;
 pub const CHECKBOX_WIDTH: u16 = 5;
+pub const INPUT_HEIGHT: u16 = 3;
 
 const CHECKMARK_ON: &str = "x";
 const CHECKMARK_OFF: &str = " ";
@@ -344,7 +345,7 @@ impl MenuButton {
         self.button.render(frame, area);
 
         if self.is_open {
-            let menu_height = self.options.len() as u16 * BUTTONS_HEIGHT;
+            let menu_height = self.options.len() as u16 * BUTTON_HEIGHT;
             let menu_area = Rect {
                 x: area.x,
                 y: area.y - menu_height,
@@ -358,7 +359,7 @@ impl MenuButton {
 
             let options_area = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints(vec![Constraint::Length(BUTTONS_HEIGHT); self.options.len()])
+                .constraints(vec![Constraint::Length(BUTTON_HEIGHT); self.options.len()])
                 .split(menu_area);
 
             for (i, option) in self.options.iter_mut().enumerate() {

@@ -14,7 +14,6 @@ use crate::tui::{app::{AppCommand, AppScreen}, widgets::controls::{self, Focusab
 const MAX_SECURE_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
 const INPUT_LABEL_HEIGHT: u16 = 1;
-const INPUT_HEIGHT: u16 = 3;
 const TIP_HEIGHT: u16 = 1;
 
 const INTRO_TEXT: &str = "Your master account keypair was created. Now let's secure it!";
@@ -128,14 +127,14 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Min(INTRO_HEIGHT),
                 Constraint::Length(INPUT_LABEL_HEIGHT),
-                Constraint::Length(INPUT_HEIGHT),
+                Constraint::Length(controls::INPUT_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INPUT_LABEL_HEIGHT),
-                Constraint::Length(INPUT_HEIGHT),
+                Constraint::Length(controls::INPUT_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(TIP_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(controls::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTON_HEIGHT),
             ])
             .split(centered_area);
 

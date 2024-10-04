@@ -88,7 +88,7 @@ impl AppScreen for Screen {
                 Constraint::Length(controls::SWITCH_HEIGHT),
                 Constraint::Fill(0), // Logo
                 Constraint::Length(OUTRO_HEIGHT),
-                Constraint::Length(controls::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTON_HEIGHT),
             ])
             .split(centered_area);
 

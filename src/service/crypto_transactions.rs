@@ -1,33 +1,13 @@
-use web3::{signing::SecretKey, types::{Address, TransactionParameters, H256, U64}};
 
-use crate::core::{eth_chain::EthChain, eth_utils};
+use web3::{signing::SecretKey, types::{TransactionParameters, U64}};
+
+use crate::core::{eth_utils, transaction::{TransactionRequest, TransactionResult}};
 use super::crypto::Crypto;
 
 const ERR_NO_TRANSACTION_FOUND: &str = "No transaction found";
 
-pub struct TransactionRequest {
-    secret_key: SecretKey,
-    from: Address,
-    to: Address,
-    value: f64,
-    currency: String,
-    chain: EthChain,
-}
-
-pub struct TransactionResponse {
-    pub tx_hash: H256,
-    pub block_number: Option<U64>,
-    pub from: Option<Address>,
-    pub to: Option<Address>,
-    pub amount: f64,
-    pub fee: f64,
-    pub chain: EthChain,
-    pub successed: bool,
-}
-
-
 impl Crypto {
-    pub async fn send_transaction(&self, request: TransactionRequest) -> anyhow::Result<TransactionResponse> {
+    pub async fn send_transaction(&self, request: TransactionRequest, secret_key: &SecretKey) -> anyhow::Result<TransactionResult> {
         if request.currency != "ETH" { // TODO: token transactions
             return Err(anyhow::anyhow!("Non-ETH transactions are not supported yet"));
         }
@@ -41,13 +21,13 @@ impl Crypto {
             ..Default::default()
         };
 
-        let tx_hash = provider.send_transaction(transaction, &request.secret_key).await?;
+        let tx_hash = provider.send_transaction(transaction, &secret_key).await?;
 
         let receipt = provider.get_transaction_receipt(tx_hash).await?
             .ok_or_else(|| anyhow::anyhow!(ERR_NO_TRANSACTION_FOUND))?;
 
         let successed = receipt.status == Some(U64::one());
-        Ok(TransactionResponse {
+        let response = TransactionResult {
             tx_hash,
             block_number: receipt.block_number,
             from: Some(receipt.from),
@@ -56,6 +36,10 @@ impl Crypto {
             fee: eth_utils::wei_to_eth(receipt.effective_gas_price.unwrap_or_default() * receipt.gas_used.unwrap_or_default()),
             chain: request.chain,
             successed,
-        })
+        };
+
+        self.db.save_transaction(receipt.from, &response)?;
+
+        Ok(response)
     }
 }

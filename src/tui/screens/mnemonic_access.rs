@@ -90,7 +90,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Length(mnemonic::MNEMONIC_HEIGHT),
-                Constraint::Length(controls::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTON_HEIGHT),
             ])
             .split(centered_area);
 

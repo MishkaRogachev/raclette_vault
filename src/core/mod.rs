@@ -10,6 +10,7 @@ pub mod token;
 mod token_test;
 pub mod balance;
 mod balance_test;
+pub mod transaction;
 pub mod provider;
 pub mod provider_eth;
 mod provider_test;

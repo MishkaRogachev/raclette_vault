@@ -12,7 +12,6 @@ use crate::tui::{widgets::controls::{self, Focusable}, app::{AppCommand, AppScre
 
 const MAX_LOGIN_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
-const INPUT_HEIGHT: u16 = 3;
 const ERROR_HEIGHT: u16 = 1;
 
 const MAX_PASSWORD_ATTEMPTS: u8 = 3;
@@ -126,11 +125,11 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(INPUT_HEIGHT),
+                Constraint::Length(controls::INPUT_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(ERROR_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(controls::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTON_HEIGHT),
             ])
             .split(centered_area);
 

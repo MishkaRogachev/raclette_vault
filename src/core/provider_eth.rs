@@ -1,12 +1,10 @@
 use web3::{
     contract::{Contract, Options},
     signing::SecretKey,
-    transports::Http,
     types::{Address, Transaction, TransactionId, TransactionParameters, TransactionReceipt, H256, U256},
-    Web3
 };
 
-use super::{balance::{Balance, Balances}, eth_chain::EthChain, eth_utils, provider::Provider, token::{Token, TokenList}};
+use super::{balance::{Balance, Balances}, eth_utils, provider::Provider, token::{Token, TokenList}};
 
 const ETH: &str = "ETH";
 

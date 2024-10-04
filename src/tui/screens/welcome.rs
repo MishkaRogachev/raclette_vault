@@ -93,7 +93,7 @@ impl AppScreen for Screen {
                 Constraint::Min(0), // Fill height
                 Constraint::Max(LOGO_HEIGHT),
                 Constraint::Length(WARNING_HEIGHT),
-                Constraint::Length(controls::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTON_HEIGHT),
                 Constraint::Min(0), // Fill height
             ])
             .split(area);

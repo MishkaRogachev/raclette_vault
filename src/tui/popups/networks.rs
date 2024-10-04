@@ -136,7 +136,7 @@ impl AppScreen for Popup {
                 Constraint::Length(1), // Margin
                 Constraint::Length(WARNING_HEIGHT),
                 Constraint::Fill(0), // Fill height for network options
-                Constraint::Length(controls::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTON_HEIGHT),
             ])
             .split(inner_area);
 

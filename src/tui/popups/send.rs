@@ -1,5 +1,5 @@
-use copypasta::{ClipboardContext, ClipboardProvider};
-use qrcode::render::unicode;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -7,45 +7,42 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Paragraph},
     Frame
 };
+use web3::types::Address;
 
+use crate::service::crypto::Crypto;
 use crate::tui::{widgets::controls, app::AppScreen};
 
-const ACCOUNT_HEIGHT: u16 = 1;
-
-const TITLE: &str = "Receive Crypto";
+const TITLE: &str = "Send Crypto";
 
 pub struct Popup {
-    address: web3::types::Address,
+    crypto: Arc<Mutex<Crypto>>,
+
+    from: web3::types::Address,
+    to: Option<web3::types::Address>,
+    amount: f64,
+
     back_button: controls::Button,
-    copy_button: controls::Button,
-    copied: bool,
+    send_button: controls::Button
 }
 
 impl Popup {
-    pub fn new(address: web3::types::Address) -> Self {
+    pub fn new(from: Address, crypto: Arc<Mutex<Crypto>>) -> Self {
+        let to = None;
+        let amount = 0.0;
+
         let back_button = controls::Button::new("Back", Some('b')).escape();
-        let copy_button = controls::Button::new("Copy To Clipboard", Some('c'));
+        let send_button = controls::Button::new("Send Transaction", Some('s'));
 
         Self {
-            address,
+            crypto,
+            from,
+            to,
+            amount,
             back_button,
-            copy_button,
-            copied: false,
+            send_button
         }
     }
 
-    fn full_address(&self) -> String {
-        format!("0x{}", hex::encode(self.address.as_bytes()))
-    }
-
-    fn generate_qr_code(&self) -> String {
-        let qr_code = qrcode::QrCode::new(self.full_address()).unwrap();
-        qr_code
-            .render::<unicode::Dense1x2>()  // Use dense Unicode characters
-            .dark_color(unicode::Dense1x2::Dark)
-            .light_color(unicode::Dense1x2::Light)
-            .build()
-    }
 }
 
 #[async_trait::async_trait]
@@ -54,10 +51,9 @@ impl AppScreen for Popup {
         if let Some(()) = self.back_button.handle_event(&event) {
             return Ok(true);
         }
-        if let Some(()) = self.copy_button.handle_event(&event) {
-            let mut ctx = ClipboardContext::new().unwrap();
-            ctx.set_contents(self.full_address()).unwrap();
-            self.copied = true;
+        if let Some(()) = self.send_button.handle_event(&event) {
+            // TODO: Send transaction
+            return Ok(false);
         }
         Ok(false)
     }
@@ -78,26 +74,31 @@ impl AppScreen for Popup {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(1), // Margin
-                Constraint::Length(ACCOUNT_HEIGHT),
-                Constraint::Fill(0), // Fill height for QR code
+                Constraint::Length(controls::BUTTON_HEIGHT), // From
+                Constraint::Min(0), // Fill height
+                Constraint::Length(controls::BUTTON_HEIGHT), // To
+                Constraint::Min(0), // Fill height
+                Constraint::Length(controls::INPUT_HEIGHT), // Amount
+                Constraint::Fill(0), // Fill height
                 Constraint::Length(controls::BUTTON_HEIGHT),
             ])
             .split(inner_area);
 
-        let mut address_text = format!("Address: {}", self.full_address());
-        if self.copied {
-            address_text.push_str(" (Copied!)");
-        }
-        let address_paragraph = Paragraph::new(address_text)
+        let from_text = Paragraph::new(format!("From: {}", self.from))
             .style(Style::default().fg(Color::Yellow))
             .alignment(Alignment::Center);
-        frame.render_widget(address_paragraph, content_layout[1]);
+        frame.render_widget(from_text, content_layout[1]);
 
-        let qr_code_string = self.generate_qr_code();
-        let qr_code_paragraph = Paragraph::new(qr_code_string)
+        let to_text = Paragraph::new(format!("To: {}", self.to.unwrap_or(Address::zero())))
             .style(Style::default().fg(Color::Yellow))
             .alignment(Alignment::Center);
-        frame.render_widget(qr_code_paragraph, content_layout[2]);
+        frame.render_widget(to_text, content_layout[3]);
+
+
+        let amount_text = Paragraph::new(format!("Amount: {}", self.amount))
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(Alignment::Center);
+        frame.render_widget(amount_text, content_layout[5]);
 
         let buttons_layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -105,9 +106,9 @@ impl AppScreen for Popup {
                 Constraint::Percentage(30),
                 Constraint::Percentage(70),
             ])
-            .split(content_layout[3]);
+            .split(content_layout[7]);
 
         self.back_button.render(frame, buttons_layout[0]);
-        self.copy_button.render(frame, buttons_layout[1]);
+        self.send_button.render(frame, buttons_layout[1]);
     }
 }

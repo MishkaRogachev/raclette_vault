@@ -12,7 +12,6 @@ use crate::tui::{widgets::controls::{self, Focusable}, app::{AppCommand, AppScre
 const MAX_MNEM_DELETE_WIDTH: u16 = 80;
 const INTRO_HEIGHT: u16 = 1;
 const INPUT_LABEL_HEIGHT: u16 = 1;
-const INPUT_HEIGHT: u16 = 3;
 const ERROR_HEIGHT: u16 = 1;
 
 const INTRO_TEXT: &str = "Confirm removal of the seed phrase";
@@ -123,11 +122,11 @@ impl AppScreen for Screen {
                 Constraint::Length(INTRO_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(INPUT_LABEL_HEIGHT),
-                Constraint::Length(INPUT_HEIGHT),
+                Constraint::Length(controls::INPUT_HEIGHT),
                 Constraint::Min(0), // Fill height
                 Constraint::Length(ERROR_HEIGHT),
                 Constraint::Min(0), // Fill height
-                Constraint::Length(controls::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTON_HEIGHT),
             ])
             .split(centered_area);
 

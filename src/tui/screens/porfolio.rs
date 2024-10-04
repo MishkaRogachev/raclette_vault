@@ -45,7 +45,7 @@ impl Screen {
 
         let quit_button = controls::Button::new("Quit", Some('q')).escape();
         let receive_button = controls::Button::new("Receive", Some('r'));
-        let send_button = controls::Button::new("Send", Some('s')).disable();
+        let send_button = controls::Button::new("Send", Some('s'));
 
         let networks = controls::Button::new("Networks", Some('n'));
         let mut access_mnemonic = controls::Button::new("Access mnemonic", Some('a'));
@@ -132,7 +132,8 @@ impl AppScreen for Screen {
         }
 
         if let Some(()) = self.send_button.handle_event(&event) {
-            // TODO
+            self.popup = Some(Box::new(super::super::popups::send::Popup::new(
+                self.session.account, self.crypto.clone())));
             return Ok(true);
         }
 
@@ -160,7 +161,7 @@ impl AppScreen for Screen {
             .constraints([
                 Constraint::Length(controls::SWITCH_HEIGHT),
                 Constraint::Fill(0), // Fill height for mode
-                Constraint::Length(controls::BUTTONS_HEIGHT),
+                Constraint::Length(controls::BUTTON_HEIGHT),
             ])
             .split(area);
 
