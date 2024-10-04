@@ -2,6 +2,7 @@
 mod tests {
     use test_case::test_case;
     use web3::transports::Http;
+    use crate::core::eth_utils;
     use crate::core::token::Token;
     use super::super::eth_chain::EthChain;
     use super::super::provider::Provider;
@@ -21,7 +22,7 @@ mod tests {
     async fn test_get_token_metadata(contract_address: &str, symbol: &str, name: &str, decimals: u16) -> anyhow::Result<()> {
         let http = get_transport(&EthChain::EthereumMainnet)?;
 
-        let contract_address: web3::types::Address = contract_address.parse()?;
+        let contract_address: web3::types::Address = eth_utils::str_to_eth_address(contract_address)?;
         let provider = Provider::new(http, EthChain::EthereumMainnet)?;
 
         let token = provider.get_token_metadata(contract_address).await?;
@@ -62,7 +63,7 @@ mod tests {
     async fn test_get_token_balances(contract_address: &str, symbol: &str, name: &str, decimals: u16) -> anyhow::Result<()> {
         let http = get_transport(&EthChain::EthereumMainnet)?;
 
-        let token = Token::new(name, symbol).with_chain_data(EthChain::EthereumMainnet, contract_address.parse()?, decimals);
+        let token = Token::new(name, symbol).with_chain_data(EthChain::EthereumMainnet, eth_utils::str_to_eth_address(contract_address)?, decimals);
         let account = web3::types::Address::from_low_u64_be(0);
 
         let provider = Provider::new(http, EthChain::EthereumMainnet)?;

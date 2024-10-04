@@ -16,4 +16,16 @@ mod tests {
         let wei_back = eth_utils::eth_to_wei(eth_back);
         assert_eq!(wei_back, wei);
     }
+
+    #[test_case("0x0000000000000000000000000000000000000084", Ok(web3::types::Address::from_low_u64_be(132)))]
+    #[test_case("12345678901234567890123456789012345678900", Err(eth_utils::ERR_INVALID_ADDRESS_PREFIX))]
+    #[test_case("0x123456789012345678901234567890123456789", Err(eth_utils::ERR_INVALID_ADDRESS_LENGTH))]
+    #[test_case("0x1234567890123456789012345678901234567890x", Err(eth_utils::ERR_INVALID_ADDRESS_LENGTH))]
+    #[test_case("0x123456789012345678901234567890123456789z", Err(eth_utils::ERR_INVALID_ADDRESS))]
+    fn test_str_to_eth_address(address: &str, expected: Result<web3::types::Address, &str>) {
+        match eth_utils::str_to_eth_address(address) {
+            Ok(valid_address) => assert_eq!(valid_address, expected.unwrap()),
+            Err(err) => assert_eq!(err.to_string(), expected.unwrap_err()),
+        }
+    }
 }

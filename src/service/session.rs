@@ -18,7 +18,7 @@ impl Session {
         let keypair = KeyPair::from_seed(seed_phrase.to_seed(""))?;
         keypair.validate()?;
 
-        let account = keypair.get_address();
+        let account = keypair.get_eth_address();
         let db = manage::open_database(&utils::app_data_path()?, account, password)?;
 
         db.save_seed_phrase(seed_phrase)?;

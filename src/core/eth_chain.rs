@@ -37,6 +37,7 @@ impl EthChain {
         TESTNET_CHAINS.contains(self)
     }
 
+    #[allow(dead_code)]
     pub fn get_chain_id(&self) -> u64 {
         match self {
             EthChain::EthereumMainnet => 1,
