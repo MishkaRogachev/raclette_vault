@@ -70,10 +70,10 @@ impl AppScreen for Screen {
         };
         if let Some(event) = scoped_event {
             match event {
-                controls::FocusableEvent::FocusFinished => {
+                controls::InputEvent::FocusFinished => {
                     delete_action();
                 },
-                controls::FocusableEvent::Input(word) => {
+                controls::InputEvent::Input(word) => {
                     if let Some(phrase_word) = self.seed_phrase.get_words().get(self.word_index) {
                         let valid = word == *phrase_word;
                         self.delete_button.disabled = !valid;

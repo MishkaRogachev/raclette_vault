@@ -9,6 +9,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Gauge, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Widget},
     Frame
 };
+use regex::Regex;
 use zeroize::Zeroizing;
 
 pub const BUTTON_HEIGHT: u16 = 3;
@@ -27,10 +28,11 @@ const SCROLL_UP_SYMBOL: &str = "⌃";
 const SCROLL_DOWN_SYMBOL: &str = "⌄";
 const SCROLL_THUMB_SYMBOL: &str = "┃";
 
-pub enum FocusableEvent {
+pub enum InputEvent {
     FocusChanged,
     FocusFinished,
     Input(String),
+    ValidationFailed,
     Enter,
 }
 
@@ -38,7 +40,7 @@ pub trait Focusable {
     fn is_focused(&self) -> bool;
     fn set_focused(&mut self, focused: bool);
     fn contains(&self, column: u16, row: u16) -> bool;
-    fn handle_event(&mut self, event: &Event) -> Option<FocusableEvent>;
+    fn handle_event(&mut self, event: &Event) -> Option<InputEvent>;
 }
 
 pub struct Button {
@@ -84,6 +86,7 @@ pub struct Input {
     pub color: Color,
     pub focused: bool,
     pub masked: bool,
+    regex: Option<Regex>,
     area: Rect,
 }
 
@@ -417,7 +420,7 @@ impl ProgressBar {
     }
 }
 
-pub fn handle_scoped_event(focusables: &mut [&mut dyn Focusable], event: &Event) -> Option<FocusableEvent> {
+pub fn handle_scoped_event(focusables: &mut [&mut dyn Focusable], event: &Event) -> Option<InputEvent> {
     // Find the focused widget
     let mut focused_index: Option<usize> = None;
     for (i, widget) in focusables.iter_mut().enumerate() {
@@ -435,7 +438,7 @@ pub fn handle_scoped_event(focusables: &mut [&mut dyn Focusable], event: &Event)
 
                 // If focused widget is last, unfocus it (no focus)
                 if index + 1 >= focusables.len() {
-                    return Some(FocusableEvent::FocusChanged);
+                    return Some(InputEvent::FocusChanged);
                 }
 
                 // Focus the next widget
@@ -446,7 +449,7 @@ pub fn handle_scoped_event(focusables: &mut [&mut dyn Focusable], event: &Event)
                     focusables[0].set_focused(true);
                 }
             }
-            return Some(FocusableEvent::FocusChanged);
+            return Some(InputEvent::FocusChanged);
         }
 
         // If esc is pressed, unfocus the current widget
@@ -454,7 +457,7 @@ pub fn handle_scoped_event(focusables: &mut [&mut dyn Focusable], event: &Event)
             if let Some(index) = focused_index {
                 focusables[index].set_focused(false); // Unfocus the current widget
             }
-            return Some(FocusableEvent::FocusChanged);
+            return Some(InputEvent::FocusChanged);
         }
 
         // If mouse click is pressed, focus the widget that was clicked
@@ -472,14 +475,14 @@ pub fn handle_scoped_event(focusables: &mut [&mut dyn Focusable], event: &Event)
     if let Some(index) = focused_index {
         if let Some(event) = focusables[index].handle_event(event) {
             match event {
-                FocusableEvent::Enter => {
+                InputEvent::Enter => {
                     // Enter is pressed, unfocus the current widget and focus the next one
                     focusables[index].set_focused(false);
                     if index + 1 < focusables.len() {
                         focusables[index + 1].set_focused(true);
-                        return Some(FocusableEvent::FocusChanged);
+                        return Some(InputEvent::FocusChanged);
                     }
-                    return Some(FocusableEvent::FocusFinished);
+                    return Some(InputEvent::FocusFinished);
                 }
                 _ => { return Some(event); }
             }
@@ -497,6 +500,7 @@ impl Input {
             color: Color::Yellow,
             focused: false,
             masked: false,
+            regex: None,
             area: Rect::default()
         }
     }
@@ -504,6 +508,21 @@ impl Input {
     pub fn masked(mut self) -> Self {
         self.masked = true;
         self
+    }
+
+    pub fn with_regex(mut self, regex: Regex) -> Self {
+        self.regex = Some(regex);
+        self
+    }
+
+    pub fn handle_input(&mut self, new_value: String) -> InputEvent {
+        if let Some(regex) = &self.regex {
+            if !regex.is_match(&new_value) {
+                return InputEvent::ValidationFailed;
+            }
+        }
+        self.value = new_value.clone().into();
+        InputEvent::Input(new_value)
     }
 
     pub fn render(&mut self, frame: &mut Frame, area: Rect) {
@@ -545,7 +564,7 @@ impl Focusable for Input {
         self.area.contains(Position { x: column, y: row })
     }
 
-    fn handle_event(&mut self, event: &Event) -> Option<FocusableEvent> {
+    fn handle_event(&mut self, event: &Event) -> Option<InputEvent> {
         if self.disabled {
             return None;
         }
@@ -553,14 +572,16 @@ impl Focusable for Input {
         if let Event::Key(key_event) = event {
             match key_event.code {
                 KeyCode::Char(c) => {
-                    self.value.push(c);
-                    Some(FocusableEvent::Input(self.value.to_string()))
+                    Some(self.handle_input(format!("{}{}", self.value.as_str(), c)))
                 }
                 KeyCode::Backspace => {
-                    self.value.pop();
-                    Some(FocusableEvent::Input(self.value.to_string()))
+                    if self.value.is_empty() {
+                        return None;
+                    }
+                    let new_value = self.value[..self.value.len() - 1].to_string();
+                    Some(self.handle_input(new_value))
                 }
-                KeyCode::Enter => Some(FocusableEvent::Enter),
+                KeyCode::Enter => Some(InputEvent::Enter),
                 _ => None,
             }
         } else {
@@ -568,6 +589,7 @@ impl Focusable for Input {
         }
     }
 }
+
 impl CheckBox {
     pub fn new(label: &str, toggled: bool, hotkey: Option<char>) -> Self {
         CheckBox {

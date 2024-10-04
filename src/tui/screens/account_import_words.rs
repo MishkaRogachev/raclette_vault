@@ -95,7 +95,7 @@ impl AppScreen for Screen {
         };
 
         if let Some(event) = controls::handle_scoped_event(&mut [&mut self.input], &event) {
-            if let controls::FocusableEvent::FocusFinished = event {
+            if let controls::InputEvent::FocusFinished = event {
                 if !self.input.value.is_empty() {
                     next_action(&self.input.value);
                     return Ok(true);

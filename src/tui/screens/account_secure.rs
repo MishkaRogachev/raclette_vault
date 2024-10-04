@@ -68,7 +68,7 @@ impl AppScreen for Screen {
         };
 
         if let Some(event) = scoped_event {
-            if let controls::FocusableEvent::FocusFinished = event {
+            if let controls::InputEvent::FocusFinished = event {
                 secure_action();
                 return Ok(true);
             }

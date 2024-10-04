@@ -84,11 +84,11 @@ impl AppScreen for Screen {
 
         if let Some(event) = scoped_event {
             match event {
-                controls::FocusableEvent::Input(word) => {
+                controls::InputEvent::Input(word) => {
                     self.login_button.disabled = word.is_empty();
                     return Ok(true);
                 },
-                controls::FocusableEvent::FocusFinished => {
+                controls::InputEvent::FocusFinished => {
                     login_action();
                     return Ok(true);
                 },
