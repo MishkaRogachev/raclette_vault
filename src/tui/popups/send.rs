@@ -9,7 +9,7 @@ use ratatui::{
 };
 use web3::types::Address;
 
-use crate::{core::eth_utils, service::crypto::Crypto};
+use crate::{core::{eth_chain::EthChain, eth_utils}, service::crypto::Crypto};
 use crate::tui::{widgets::controls, app::AppScreen};
 
 const TITLE: &str = "Send Crypto";
@@ -17,10 +17,14 @@ const TITLE: &str = "Send Crypto";
 pub struct Popup {
     crypto: Arc<Mutex<Crypto>>,
 
+    chain: Option<EthChain>,
     from: web3::types::Address,
     eth_usd_rate: Option<f64>,
+    amount_value: f64,
+    alt_amount_value: Option<f64>,
     fees: Option<f64>,
 
+    chain_button: controls::MenuButton<EthChain>,
     to: controls::Input,
     amount: controls::Input,
     swap_button: controls::SwapButton,
@@ -30,12 +34,21 @@ pub struct Popup {
 }
 
 impl Popup {
-    pub fn new(from: Address, crypto: Arc<Mutex<Crypto>>) -> Self {
+    pub async fn new(from: Address, crypto: Arc<Mutex<Crypto>>) -> Self {
+        let chain = None;
         let eth_usd_rate = None;
+        let amount_value = 0.0;
+        let alt_amount_value = None;
         let fees = None;
 
+        let crypto_lock = crypto.lock().await.clone();
+        let chain_options = crypto_lock.get_active_networks().iter().map(|chain| {
+            (chain.clone(), controls::Button::new(chain.get_display_name(), None))
+        }).collect();
+
+        let chain_button = controls::MenuButton::new("Chain", Some('c'), chain_options);
         let to = controls::Input::new("Enter receiver address")
-            .with_regex(regex::Regex::new(r"^0(x[0-9a-fA-F]*)?$").unwrap());
+            .with_regex(regex::Regex::new(r"^$|^0(x[0-9a-fA-F]*)?$").unwrap());
         let amount = controls::Input::new("Enter amount ETH to transfer")
             .with_regex(regex::Regex::new(r"^(0(\.\d*)?|[1-9]\d*(\.\d*)?)?$").unwrap());
         let swap_button = controls::SwapButton::new(
@@ -48,9 +61,13 @@ impl Popup {
 
         Self {
             crypto,
+            chain,
             from,
             eth_usd_rate,
+            amount_value,
+            alt_amount_value,
             fees,
+            chain_button,
             to,
             amount,
             swap_button,
@@ -65,10 +82,16 @@ impl Popup {
 #[async_trait::async_trait]
 impl AppScreen for Popup {
     async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
+
         if let Some(_) = controls::handle_scoped_event(&mut [&mut self.to, &mut self.amount], &event) {
             return Ok(false);
         }
+        if let Some(chain) = self.chain_button.handle_event(&event) {
+            self.chain = Some(chain);
+            return Ok(false);
+        }
         if let Some(_) = self.swap_button.handle_event(&event) {
+            self.alt_amount_value = None;
             return Ok(false);
         }
         if let Some(()) = self.back_button.handle_event(&event) {
@@ -82,10 +105,44 @@ impl AppScreen for Popup {
     }
 
     async fn update(&mut self) {
+        let mut is_valid = true;
+
+        // Validate chain
+        if let Some(chain) = self.chain {
+            self.chain_button.button.label = chain.get_display_name().to_string();
+            self.chain_button.button.color = Color::Yellow;
+            is_valid &= true;
+        } else {
+            self.chain_button.button.label = "Select chain".to_string();
+            self.chain_button.button.color = Color::Red;
+            is_valid &= false;
+        }
+
         // Validate receiver address
         let to = eth_utils::str_to_eth_address(&self.to.value);
-        let is_valid = to.is_ok();
-        self.to.color = if is_valid { Color::Yellow } else { Color::Red };
+        self.to.color = if to.is_ok() || self.to.value.is_empty() { Color::Yellow } else { Color::Red };
+        is_valid &= to.is_ok();
+
+        // Validate amount
+        self.amount_value = self.amount.value.parse::<f64>().unwrap_or(0.0);
+        let amount_valid = self.amount_value > 0.0;
+        self.amount.color = if amount_valid || self.amount.value.is_empty() { Color::Yellow } else { Color::Red };
+        is_valid &= amount_valid;
+
+        // Cacl alt amount
+        if amount_valid && self.alt_amount_value.is_none() {
+            if let Some(eth_usd_rate) = self.eth_usd_rate {
+                self.alt_amount_value = Some(if self.swap_button.state {
+                    self.amount_value * eth_usd_rate
+                } else {
+                    self.amount_value / eth_usd_rate
+                });
+            } else {
+                self.alt_amount_value = None;
+            }
+        } else {
+            self.alt_amount_value = None;
+        }
 
         self.send_button.disabled = !is_valid;
     }
@@ -104,6 +161,7 @@ impl AppScreen for Popup {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(controls::BUTTON_HEIGHT),    // Currency
+                Constraint::Length(controls::BUTTON_HEIGHT),    // Chain
                 Constraint::Length(controls::BUTTON_HEIGHT),    // From
                 Constraint::Length(controls::BUTTON_HEIGHT),    // To
                 Constraint::Length(controls::INPUT_HEIGHT),     // Amount
@@ -137,11 +195,23 @@ impl AppScreen for Popup {
             .alignment(Alignment::Left);
         frame.render_widget(currency, currency_layout[2].inner(label_margin));
 
+        // Chain
+        let chain_layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(row_constraints)
+            .split(content_layout[1]);
+
+        let chain_label = Paragraph::new("Chain")
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(Alignment::Left);
+        frame.render_widget(chain_label, chain_layout[1].inner(label_margin));
+        // NOTE: Chain should be rendered last to ensure it's on top
+
         // From
         let from_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(row_constraints)
-            .split(content_layout[1]);
+            .split(content_layout[2]);
 
         let from_label = Paragraph::new("From")
             .style(Style::default().fg(Color::Yellow))
@@ -157,7 +227,7 @@ impl AppScreen for Popup {
         let to_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(row_constraints)
-            .split(content_layout[2]);
+            .split(content_layout[3]);
 
         let to_label = Paragraph::new("To")
             .style(Style::default().fg(Color::Yellow))
@@ -176,7 +246,7 @@ impl AppScreen for Popup {
                 Constraint::Percentage(15),     // Swap button
                 Constraint::Percentage(25),     // Alt value
                 Constraint::Percentage(2)])
-            .split(content_layout[3]);
+            .split(content_layout[4]);
 
         let amount_label = Paragraph::new("Amount")
             .style(Style::default().fg(Color::Yellow))
@@ -186,27 +256,18 @@ impl AppScreen for Popup {
         self.amount.render(frame, amount_layout[2]);
         self.swap_button.render(frame, amount_layout[3]);
 
-        let amount_value = self.amount.value.parse::<f64>().unwrap_or(0.0);
-        let alt_amount = if self.swap_button.state {
-            if let Some(eth_usd_rate) = self.eth_usd_rate {
-                Some(format!("{} ETH", eth_usd_rate * amount_value))
-            } else {
-                None
-            }
-        } else {
-            if let Some(eth_usd_rate) = self.eth_usd_rate {
-                Some(format!("{} USD", eth_usd_rate * amount_value))
-            } else {
-                None
-            }
-        };
         let alt_layout = amount_layout[4].inner(label_margin);
-        if let Some(alt_amount) = alt_amount {
-            let alt_amount_label = Paragraph::new(alt_amount)
+        if let Some(alt_amount_value) = self.alt_amount_value {
+            let alt_amount_str = if self.swap_button.state {
+                format!("{} ETH", alt_amount_value)
+            } else {
+                format!("{} USD", alt_amount_value)
+            };
+            let alt_amount_label = Paragraph::new(alt_amount_str)
                 .style(Style::default().fg(Color::Yellow))
                 .alignment(Alignment::Left);
             frame.render_widget(alt_amount_label, alt_layout);
-        } else if amount_value > 0.0 {
+        } else if self.amount_value > 0.0 {
             self.busy.render(frame, alt_layout);
         }
 
@@ -214,7 +275,7 @@ impl AppScreen for Popup {
         let fees_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(row_constraints)
-            .split(content_layout[4]);
+            .split(content_layout[5]);
 
         let fees_label = Paragraph::new("Fees")
             .style(Style::default().fg(Color::Yellow))
@@ -232,6 +293,9 @@ impl AppScreen for Popup {
         };
         frame.render_widget(fees_value, fees_layout[2].inner(label_margin));
 
+        // Chains menu
+        self.chain_button.render(frame, chain_layout[2]);
+
         // Buttons
         let buttons_layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -239,7 +303,7 @@ impl AppScreen for Popup {
                 Constraint::Percentage(30),
                 Constraint::Percentage(70),
             ])
-            .split(content_layout[5]);
+            .split(content_layout[6]);
 
         self.back_button.render(frame, buttons_layout[0]);
         self.send_button.render(frame, buttons_layout[1]);

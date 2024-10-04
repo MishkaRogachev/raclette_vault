@@ -10,8 +10,6 @@ use ratatui::{
 
 use crate::tui::{widgets::controls, app::AppScreen};
 
-const ACCOUNT_HEIGHT: u16 = 1;
-
 const TITLE: &str = "Receive Crypto";
 
 pub struct Popup {
@@ -77,27 +75,31 @@ impl AppScreen for Popup {
         let content_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1), // Margin
-                Constraint::Length(ACCOUNT_HEIGHT),
-                Constraint::Fill(0), // Fill height for QR code
+                Constraint::Length(1),  // margin
+                Constraint::Length(1),  // Address
+                Constraint::Length(1),  // Copied
+                Constraint::Fill(0),    // QR code
                 Constraint::Length(controls::BUTTON_HEIGHT),
             ])
             .split(inner_area);
 
-        let mut address_text = format!("Address: {}", self.full_address());
-        if self.copied {
-            address_text.push_str(" (Copied!)");
-        }
-        let address_paragraph = Paragraph::new(address_text)
+        let address_paragraph = Paragraph::new(format!("Address: {}", self.full_address()))
             .style(Style::default().fg(Color::Yellow))
             .alignment(Alignment::Center);
         frame.render_widget(address_paragraph, content_layout[1]);
+
+        if self.copied {
+            let copied_paragraph = Paragraph::new("Copied!")
+                .style(Style::default().fg(Color::Yellow))
+                .alignment(Alignment::Center);
+            frame.render_widget(copied_paragraph, content_layout[2]);
+        }
 
         let qr_code_string = self.generate_qr_code();
         let qr_code_paragraph = Paragraph::new(qr_code_string)
             .style(Style::default().fg(Color::Yellow))
             .alignment(Alignment::Center);
-        frame.render_widget(qr_code_paragraph, content_layout[2]);
+        frame.render_widget(qr_code_paragraph, content_layout[3]);
 
         let buttons_layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -105,7 +107,7 @@ impl AppScreen for Popup {
                 Constraint::Percentage(30),
                 Constraint::Percentage(70),
             ])
-            .split(content_layout[3]);
+            .split(content_layout[4]);
 
         self.back_button.render(frame, buttons_layout[0]);
         self.copy_button.render(frame, buttons_layout[1]);

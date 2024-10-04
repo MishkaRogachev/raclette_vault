@@ -66,10 +66,11 @@ pub struct SwapButton {
     pub second: Button,
 }
 
-pub struct MenuButton {
+pub struct MenuButton<T: Clone> {
     pub button: Button,
-    pub options: Vec<Button>,
-    pub is_open: bool
+    pub options: HashMap<T, Button>,
+    pub is_open: bool,
+    pub above: bool
 }
 
 pub struct ProgressBar {
@@ -314,18 +315,29 @@ impl SwapButton {
     }
 }
 
-impl MenuButton {
-    pub fn new(label: &str, hotkey: Option<char>, options: Vec<Button>) -> Self {
-        let button = Button::new(label, hotkey);
-        Self { button, options, is_open: false }
+// TODO: menu component
+impl<T> MenuButton<T>
+where T: Clone {
+    pub fn new(label: &str, hotkey: Option<char>, options: HashMap<T, Button>) -> Self {
+        let mut button = Button::new(label, hotkey);
+        if options.is_empty() {
+            button.disabled = true;
+        }
+
+        Self { button, options, is_open: false, above: false }
     }
 
-    pub fn handle_event(&mut self, event: &Event) -> Option<usize> {
+    pub fn keep_above(mut self) -> Self {
+        self.above = true;
+        self
+    }
+
+    pub fn handle_event(&mut self, event: &Event) -> Option<T> {
         if self.is_open {
-            for (i, option) in self.options.iter_mut().enumerate() {
+            for (t, option) in self.options.iter_mut() {
                 if let Some(()) = option.handle_event(event) {
                     self.is_open = false;
-                    return Some(i);
+                    return Some(t.clone());
                 }
             }
 
@@ -349,12 +361,9 @@ impl MenuButton {
 
         if self.is_open {
             let menu_height = self.options.len() as u16 * BUTTON_HEIGHT;
-            let menu_area = Rect {
-                x: area.x,
-                y: area.y - menu_height,
-                width: area.width,
-                height: menu_height,
-            };
+            let y: u16 = if self.above { area.y - menu_height } else { area.y + BUTTON_HEIGHT };
+
+            let menu_area = Rect { x: area.x, y, width: area.width, height: menu_height };
             frame.render_widget(Clear, menu_area);
 
             let background_block = Block::default().style(Style::default().bg(Color::Black)).borders(Borders::ALL);
@@ -366,7 +375,7 @@ impl MenuButton {
                 .split(menu_area);
 
             for (i, option) in self.options.iter_mut().enumerate() {
-                option.render(frame, options_area[i]);
+                option.1.render(frame, options_area[i]);
             }
         }
     }

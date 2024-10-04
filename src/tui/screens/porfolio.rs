@@ -1,4 +1,4 @@
-use std::sync::{mpsc, Arc};
+use std::{collections::HashMap, sync::{mpsc, Arc}};
 use tokio::sync::Mutex;
 use ratatui::{
     crossterm::event::Event,
@@ -22,8 +22,15 @@ pub struct Screen {
     quit_button: controls::Button,
     receive_button: controls::Button,
     send_button: controls::Button,
-    manage_button: controls::MenuButton,
+    manage_button: controls::MenuButton<ManageOption>,
     popup: Option<Box<dyn AppScreen + Send>>,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+enum ManageOption {
+    Networks,
+    AccessMnemonic,
+    DeleteAccount,
 }
 
 impl Screen {
@@ -53,8 +60,13 @@ impl Screen {
             access_mnemonic = access_mnemonic.disable();
         }
         let delete_account = controls::Button::new("Delete Account", Some('d')).warning();
-        let manage_button = controls::MenuButton::new("Manage", Some('m'),
-            vec![networks, access_mnemonic, delete_account]);
+        let manage_options = HashMap::from([
+            (ManageOption::Networks, networks),
+            (ManageOption::AccessMnemonic, access_mnemonic),
+            (ManageOption::DeleteAccount, delete_account),
+        ]);
+        let manage_button = controls::MenuButton::new(
+            "Manage", Some('m'), manage_options).keep_above();
 
         let mode: Option<Box<dyn AppScreen + Send>> = Some(Box::new(
             super::porfolio_accounts::Screen::new(session.clone(), crypto.clone())));
@@ -87,28 +99,26 @@ impl AppScreen for Screen {
             return Ok(false);
         }
 
-        if let Some(index) = self.manage_button.handle_event(&event) {
-            match index {
-                0 => {
+        if let Some(manage_option) = self.manage_button.handle_event(&event) {
+            match manage_option {
+                ManageOption::Networks => {
                     self.popup = Some(Box::new(super::super::popups::networks::Popup::new(self.crypto.clone())));
                     return Ok(true);
                 },
-                1 => {
+                ManageOption::AccessMnemonic => {
                     self.command_tx.send(AppCommand::SwitchScreen(Box::new(
                         super::mnemonic_access::Screen::new(self.command_tx.clone(), self.session.clone())
                     ))).unwrap();
                     return Ok(true);
                 },
-                2 => {
+                ManageOption::DeleteAccount => {
                     self.command_tx.send(AppCommand::SwitchScreen(Box::new(
                         super::account_delete::Screen::new(
                             self.command_tx.clone(), self.session.clone())
                     ))).unwrap();
                     return Ok(true);
-                },
-                _ => {}
+                }
             }
-            return Ok(false);
         }
 
         if let Some(index) = self.mode_switch.handle_event(&event) {
@@ -132,8 +142,8 @@ impl AppScreen for Screen {
         }
 
         if let Some(()) = self.send_button.handle_event(&event) {
-            self.popup = Some(Box::new(super::super::popups::send::Popup::new(
-                self.session.account, self.crypto.clone())));
+            let popup = super::super::popups::send::Popup::new(self.session.account, self.crypto.clone()).await;
+            self.popup = Some(Box::new(popup));
             return Ok(true);
         }
 
