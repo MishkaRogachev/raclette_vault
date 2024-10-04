@@ -114,14 +114,13 @@ impl Account {
                 ])
                 .split(tokens_layout[i]);
 
-            let token = &self.balances.as_ref().unwrap()[i + index_offset];
-            let token_label = Paragraph::new(format!("{}", token.currency))
+            let balance = &self.balances.as_ref().unwrap()[i + index_offset];
+            let token_label = Paragraph::new(format!("{}", balance.currency))
                 .style(Style::default().fg(Color::Yellow))
                 .alignment(Alignment::Left);
 
-            let token_value = token.summary();
-            let token_value_color = if token.from_test_network() { Color::Red } else { Color::Yellow };
-            let token_value_label = Paragraph::new(format!("{:.6} ({:.2} USD)", token_value.value, token_value.usd_value))
+            let token_value_color = if balance.from_test_network() { Color::Red } else { Color::Yellow };
+            let token_value_label = Paragraph::new(balance.to_string())
                 .style(Style::default().fg(token_value_color))
                 .alignment(Alignment::Right);
 

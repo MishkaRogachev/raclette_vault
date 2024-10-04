@@ -1,12 +1,29 @@
 
 use web3::{signing::SecretKey, types::{TransactionParameters, U64}};
 
-use crate::core::{eth_utils, transaction::{TransactionRequest, TransactionResult}};
+use crate::core::{balance::Balance, eth_utils, transaction::{TransactionRequest, TransactionResult}};
 use super::crypto::Crypto;
 
 const ERR_NO_TRANSACTION_FOUND: &str = "No transaction found";
 
 impl Crypto {
+    pub async fn estimate_transaction_fees(&self, request: TransactionRequest) -> anyhow::Result<Balance> {
+        if request.currency != "ETH" { // TODO: token transactions
+            return Err(anyhow::anyhow!("Non-ETH transactions are not supported yet"));
+        }
+
+        let provider = self.providers.get(&request.chain).ok_or_else(|| 
+            anyhow::anyhow!(format!("No provider for chain {}", request.chain)))?;
+
+        let transaction = TransactionParameters {
+            to: Some(request.to),
+            value: eth_utils::eth_to_wei(request.amount),
+            ..Default::default()
+        };
+
+        provider.estimate_transaction_fees(transaction, request.from).await
+    }
+
     pub async fn send_transaction(&self, request: TransactionRequest, secret_key: &SecretKey) -> anyhow::Result<TransactionResult> {
         if request.currency != "ETH" { // TODO: token transactions
             return Err(anyhow::anyhow!("Non-ETH transactions are not supported yet"));
@@ -17,7 +34,7 @@ impl Crypto {
 
         let transaction = TransactionParameters {
             to: Some(request.to),
-            value: eth_utils::eth_to_wei(request.value),
+            value: eth_utils::eth_to_wei(request.amount),
             ..Default::default()
         };
 
@@ -32,7 +49,7 @@ impl Crypto {
             block_number: receipt.block_number,
             from: Some(receipt.from),
             to: receipt.to,
-            amount: request.value,
+            amount: request.amount,
             fee: eth_utils::wei_to_eth(receipt.effective_gas_price.unwrap_or_default() * receipt.gas_used.unwrap_or_default()),
             chain: request.chain,
             successed,

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use web3::types::Address;
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
@@ -7,9 +8,9 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Paragraph},
     Frame
 };
-use web3::types::Address;
 
-use crate::{core::{eth_chain::EthChain, eth_utils}, service::crypto::Crypto};
+use crate::core::{balance::Balance, eth_chain::EthChain, eth_utils, transaction::TransactionRequest};
+use crate::service::crypto::Crypto;
 use crate::tui::{widgets::controls, app::AppScreen};
 
 const TITLE: &str = "Send Crypto";
@@ -22,7 +23,7 @@ pub struct Popup {
     eth_usd_rate: Option<f64>,
     amount_value: f64,
     alt_amount_value: Option<f64>,
-    fees: Option<f64>,
+    fees: Option<Balance>,
 
     chain_button: controls::MenuButton<EthChain>,
     to: controls::Input,
@@ -77,20 +78,45 @@ impl Popup {
         }
     }
 
+    fn assembly_transaction_request(&self) -> Option<TransactionRequest> {
+        let chain = self.chain?;
+        let to = eth_utils::str_to_eth_address(&self.to.value).ok()?;
+        if self.amount_value <= 0.0 {
+            return None;
+        }
+
+        Some(TransactionRequest {
+            currency: "ETH".to_string(),
+            chain,
+            from: self.from,
+            to,
+            amount: self.amount_value,
+        })
+    }
+
+    fn invalidate(&mut self) {
+        self.amount_value = 0.0;
+        self.alt_amount_value = None;
+        self.fees = None;
+    }
 }
 
 #[async_trait::async_trait]
 impl AppScreen for Popup {
     async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
-
         if let Some(_) = controls::handle_scoped_event(&mut [&mut self.to, &mut self.amount], &event) {
+            self.invalidate();
             return Ok(false);
         }
         if let Some(chain) = self.chain_button.handle_event(&event) {
             self.chain = Some(chain);
+            self.invalidate();
             return Ok(false);
         }
         if let Some(_) = self.swap_button.handle_event(&event) {
+            if let Some(alt_amount_value) = self.alt_amount_value {
+                self.amount_value = alt_amount_value;
+            }
             self.alt_amount_value = None;
             return Ok(false);
         }
@@ -105,31 +131,43 @@ impl AppScreen for Popup {
     }
 
     async fn update(&mut self) {
-        let mut is_valid = true;
+        let mut is_ready = true;
 
         // Validate chain
         if let Some(chain) = self.chain {
             self.chain_button.button.label = chain.get_display_name().to_string();
             self.chain_button.button.color = Color::Yellow;
-            is_valid &= true;
+            is_ready &= true;
         } else {
             self.chain_button.button.label = "Select chain".to_string();
             self.chain_button.button.color = Color::Red;
-            is_valid &= false;
+            is_ready &= false;
         }
 
         // Validate receiver address
         let to = eth_utils::str_to_eth_address(&self.to.value);
-        self.to.color = if to.is_ok() || self.to.value.is_empty() { Color::Yellow } else { Color::Red };
-        is_valid &= to.is_ok();
+        let address_valid = to.is_ok();
+        self.to.color = if address_valid || self.to.value.is_empty() { Color::Yellow } else { Color::Red };
+        is_ready &= address_valid;
 
         // Validate amount
         self.amount_value = self.amount.value.parse::<f64>().unwrap_or(0.0);
         let amount_valid = self.amount_value > 0.0;
         self.amount.color = if amount_valid || self.amount.value.is_empty() { Color::Yellow } else { Color::Red };
-        is_valid &= amount_valid;
+        is_ready &= amount_valid;
 
-        // Cacl alt amount
+        // Calc fees
+        if self.fees.is_none() && amount_valid && address_valid {
+            if let Some(transaction_request) = self.assembly_transaction_request() {
+                let crypto = self.crypto.lock().await.clone();
+                self.fees = crypto.estimate_transaction_fees(transaction_request).await.ok();
+            } else {
+                self.fees = None;
+            }
+        }
+        is_ready &= self.fees.is_some();
+
+        // Calc alt amount
         if amount_valid && self.alt_amount_value.is_none() {
             if let Some(eth_usd_rate) = self.eth_usd_rate {
                 self.alt_amount_value = Some(if self.swap_button.state {
@@ -144,7 +182,7 @@ impl AppScreen for Popup {
             self.alt_amount_value = None;
         }
 
-        self.send_button.disabled = !is_valid;
+        self.send_button.disabled = !is_ready;
     }
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
@@ -282,12 +320,12 @@ impl AppScreen for Popup {
             .alignment(Alignment::Left);
         frame.render_widget(fees_label, fees_layout[1].inner(label_margin));
 
-        let fees_value = if let Some(fees) = self.fees {
-            Paragraph::new(format!("{:.6} ETH", fees))
+        let fees_value = if let Some(fees) = &self.fees {
+            Paragraph::new(fees.to_string())
                 .style(Style::default().fg(Color::Yellow))
                 .alignment(Alignment::Left)
         } else {
-            Paragraph::new("-")
+            Paragraph::new("---")
                 .style(Style::default().fg(Color::Yellow))
                 .alignment(Alignment::Left)
         };

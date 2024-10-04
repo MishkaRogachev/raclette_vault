@@ -1,7 +1,7 @@
 use web3::{
     contract::{Contract, Options},
     signing::SecretKey,
-    types::{Address, Transaction, TransactionId, TransactionParameters, TransactionReceipt, H256, U256},
+    types::{Address, CallRequest, Transaction, TransactionId, TransactionParameters, TransactionReceipt, H256, U256},
 };
 
 use super::{balance::{Balance, Balances}, eth_utils, provider::Provider, token::{Token, TokenList}};
@@ -40,7 +40,7 @@ impl<T: web3::Transport> Provider<T> {
         Ok(Token::new(&name, &symbol).with_chain_data(self.chain, contract_address, decimals.as_u64() as u16))
     }
 
-    async fn get_eth_usd_rate(&self) -> anyhow::Result<f64> {
+    pub async fn get_eth_usd_rate(&self) -> anyhow::Result<f64> {
         let contrcat_address = self.chain.get_chainlink_contract_address();
         let contract = Contract::from_json(self.web3.eth(), contrcat_address, CHAINLINK_ABI)?;
 
@@ -97,6 +97,27 @@ impl<T: web3::Transport> Provider<T> {
             balances.push(balance);
         }
         Ok(balances)
+    }
+
+    pub async fn estimate_transaction_fees(&self, transaction: TransactionParameters, from: Address) -> anyhow::Result<Balance> {
+        let gas_limit: U256 = self.web3.eth()
+            .estimate_gas(
+                CallRequest {
+                    from: Some(from),
+                    to: transaction.to,
+                    gas: None,
+                    gas_price: None,
+                    value: Some(transaction.value),
+                    data: Some(transaction.data),
+                    ..Default::default()
+                },
+                None
+            )
+            .await?;
+        let gas_price: U256 = self.web3.eth().gas_price().await?;
+        let wei = gas_limit * gas_price;
+        let usd_value = eth_utils::wei_to_eth(wei) * self.get_eth_usd_rate().await?;
+        Ok(Balance::new(ETH, self.chain, eth_utils::wei_to_eth(wei), usd_value))
     }
 
     pub async fn send_transaction(&self, transaction: TransactionParameters, secret_key: &SecretKey) -> anyhow::Result<H256> {

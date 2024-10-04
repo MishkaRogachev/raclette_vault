@@ -28,6 +28,11 @@ impl Balance {
         Self { currency: currency.to_string(), chain_values }
     }
 
+    pub fn to_string(&self) -> String {
+        let summary = self.summary();
+        format!("{:.6} {} ({:.2} USD)", summary.value, self.currency, summary.usd_value)
+    }
+
     pub fn summary(&self) -> BalanceValue {
         self.chain_values.values().fold(BalanceValue::new(0.0, 0.0), |acc, v| {
             BalanceValue::new(acc.value + v.value, acc.usd_value + v.usd_value)
