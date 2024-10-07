@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ratatui::{
     crossterm::event::{Event, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind},
-    layout::{Alignment, Constraint, Direction, Layout, Position, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Margin, Position, Rect},
     style::{Color, Modifier, Style, Stylize},
     symbols,
     text::{Line, Span},
@@ -36,6 +36,12 @@ pub enum InputEvent {
     Enter,
 }
 
+pub enum MenuEvent<T> {
+    Selected(T),
+    Opened,
+    Closed
+}
+
 pub trait Focusable {
     fn is_focused(&self) -> bool;
     fn set_focused(&mut self, focused: bool);
@@ -64,13 +70,6 @@ pub struct SwapButton {
     pub state: bool,
     pub first: Button,
     pub second: Button,
-}
-
-pub struct MenuButton<T: Clone> {
-    pub button: Button,
-    pub options: HashMap<T, Button>,
-    pub is_open: bool,
-    pub above: bool
 }
 
 pub struct ProgressBar {
@@ -114,6 +113,19 @@ pub struct Scroll {
     pub total: usize,
     pub visible: usize,
     pub position: usize,
+}
+
+pub struct Menu<T> {
+    pub options: HashMap<T, String>,
+    pub hovered_index: Option<usize>,
+    area: Rect,
+}
+
+pub struct MenuButton<T> {
+    pub button: Button,
+    pub menu: Menu<T>,
+    pub is_open: bool,
+    pub above: bool
 }
 
 impl Button {
@@ -311,72 +323,6 @@ impl SwapButton {
             self.second.render(frame, area);
         } else {
             self.first.render(frame, area);
-        }
-    }
-}
-
-// TODO: menu component
-impl<T> MenuButton<T>
-where T: Clone {
-    pub fn new(label: &str, hotkey: Option<char>, options: HashMap<T, Button>) -> Self {
-        let mut button = Button::new(label, hotkey);
-        if options.is_empty() {
-            button.disabled = true;
-        }
-
-        Self { button, options, is_open: false, above: false }
-    }
-
-    pub fn keep_above(mut self) -> Self {
-        self.above = true;
-        self
-    }
-
-    pub fn handle_event(&mut self, event: &Event) -> Option<T> {
-        if self.is_open {
-            for (t, option) in self.options.iter_mut() {
-                if let Some(()) = option.handle_event(event) {
-                    self.is_open = false;
-                    return Some(t.clone());
-                }
-            }
-
-            if let Event::Mouse(mouse_event) = event {
-                if mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
-                    self.is_open = false;
-                    return None;
-                }
-            } else if event == &Event::Key(KeyCode::Esc.into()) {
-                self.is_open = false;
-                return None;
-            }
-        } else if let Some(()) = self.button.handle_event(event) {
-            self.is_open = true;
-        }
-        None
-    }
-
-    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
-        self.button.render(frame, area);
-
-        if self.is_open {
-            let menu_height = self.options.len() as u16 * BUTTON_HEIGHT;
-            let y: u16 = if self.above { area.y - menu_height } else { area.y + BUTTON_HEIGHT };
-
-            let menu_area = Rect { x: area.x, y, width: area.width, height: menu_height };
-            frame.render_widget(Clear, menu_area);
-
-            let background_block = Block::default().style(Style::default().bg(Color::Black)).borders(Borders::ALL);
-            frame.render_widget(background_block, menu_area);
-
-            let options_area = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints(vec![Constraint::Length(BUTTON_HEIGHT); self.options.len()])
-                .split(menu_area);
-
-            for (i, option) in self.options.iter_mut().enumerate() {
-                option.1.render(frame, options_area[i]);
-            }
         }
     }
 }
@@ -823,6 +769,152 @@ impl Scroll {
             frame.render_stateful_widget(scrollbar, area, &mut scrollbar_state);
         } else {
             self.position = 0;
+        }
+    }
+}
+
+impl<T: Clone + Eq + std::hash::Hash> Menu<T> {
+    pub fn new(options: HashMap<T, String>) -> Self {
+        Self {
+            options,
+            hovered_index: None,
+            area: Rect::default(),
+        }
+    }
+
+    pub fn get_height(&self) -> u16 {
+        self.options.len() as u16 + 2
+    }
+
+    pub fn handle_event(&mut self, event: &Event) -> Option<T> {
+        match event {
+            Event::Mouse(mouse_event) => {
+                let inner = self.area.inner(Margin { vertical: 1, horizontal: 1 });
+                if inner.contains(Position { x: mouse_event.column, y: mouse_event.row }) {
+                    let option_height = inner.height / self.options.len() as u16;
+                    let index = ((mouse_event.row - inner.y) / option_height) as usize;
+
+                    if index < self.options.len() {
+                        self.hovered_index = Some(index);
+                        if mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
+                            return self.options.keys().nth(index).cloned();
+                        }
+                    }
+                }
+            }
+            Event::Key(key_event) => match key_event.code {
+                KeyCode::Up => {
+                    if let Some(index) = self.hovered_index {
+                        self.hovered_index = Some(index.saturating_sub(1));
+                    } else {
+                        self.hovered_index = Some(self.options.len().saturating_sub(1));
+                    }
+                }
+                KeyCode::Down => {
+                    if let Some(index) = self.hovered_index {
+                        if index < self.options.len() - 1 {
+                            self.hovered_index = Some(index + 1);
+                        }
+                    } else {
+                        self.hovered_index = Some(0);
+                    }
+                }
+                KeyCode::Enter => {
+                    if let Some(index) = self.hovered_index {
+                        return self.options.keys().nth(index).cloned();
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+        None
+    }
+
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        self.area = area; // Store the menu's area for mouse handling
+        frame.render_widget(Clear, area);
+
+        let menu_block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Yellow));
+        frame.render_widget(menu_block, area);
+
+        let options_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(vec![Constraint::Length(1); self.options.len()])
+            .margin(1)
+            .split(area);
+
+        for (i, option) in self.options.values().enumerate() {
+            let style = if Some(i) == self.hovered_index {
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::Yellow)
+            };
+
+            let option_paragraph = Paragraph::new(option.clone()).style(style);
+            frame.render_widget(option_paragraph, options_layout[i]);
+        }
+    }
+}
+
+impl<T: Clone + Eq + std::hash::Hash> MenuButton<T> {
+    pub fn new(label: &str, hotkey: Option<char>, options: HashMap<T, String>) -> Self {
+        let button = Button::new(label, hotkey);
+        let menu = Menu::new(options);
+
+        Self {
+            button,
+            menu,
+            is_open: false,
+            above: false,
+        }
+    }
+
+    pub fn keep_above(mut self) -> Self {
+        self.above = true;
+        self
+    }
+
+    pub fn handle_event(&mut self, event: &Event) -> Option<MenuEvent<T>> {
+        if self.is_open {
+            if let Some(selected) = self.menu.handle_event(event) {
+                self.is_open = false;
+                return Some(MenuEvent::Selected(selected));
+            }
+
+            if let Event::Mouse(mouse_event) = event {
+                if mouse_event.kind == MouseEventKind::Down(MouseButton::Left) {
+                    self.is_open = false;
+                    return Some(MenuEvent::Closed);
+                }
+            } else if event == &Event::Key(KeyCode::Esc.into()) {
+                self.is_open = false;
+                return Some(MenuEvent::Closed);
+            }
+        } else if let Some(()) = self.button.handle_event(event) {
+            self.is_open = true;
+            return Some(MenuEvent::Opened);
+        }
+        None
+    }
+
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        self.button.render(frame, area);
+
+        if self.is_open {
+            let menu_height = self.menu.get_height();
+            let menu_y = if self.above {
+                area.y.saturating_sub(menu_height) + 1
+            } else {
+                area.y + area.height - 1
+            };
+
+            self.menu.render(frame, Rect { x: area.x, y: menu_y, width: area.width, height: menu_height });
         }
     }
 }

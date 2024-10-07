@@ -13,7 +13,7 @@ use crate::core::{balance::Balance, eth_chain::EthChain, eth_utils, transaction:
 use crate::service::crypto::Crypto;
 use crate::tui::{widgets::controls, app::AppScreen};
 
-const TITLE: &str = "Send Crypto";
+const TITLE: &str = "Send Transaction";
 
 pub struct Popup {
     crypto: Arc<Mutex<Crypto>>,
@@ -44,7 +44,7 @@ impl Popup {
 
         let crypto_lock = crypto.lock().await.clone();
         let chain_options = crypto_lock.get_active_networks().iter().map(|chain| {
-            (chain.clone(), controls::Button::new(chain.get_display_name(), None))
+            (chain.clone(), chain.get_display_name().to_string())
         }).collect();
 
         let chain_button = controls::MenuButton::new("Chain", Some('c'), chain_options);
@@ -58,7 +58,7 @@ impl Popup {
         );
         let busy = controls::Busy::new("Loading..");
         let back_button = controls::Button::new("Back", Some('b')).escape();
-        let send_button = controls::Button::new("Send Transaction", Some('s'));
+        let send_button = controls::Button::new("Sign Transaction", Some('s'));
 
         Self {
             crypto,
@@ -108,9 +108,11 @@ impl AppScreen for Popup {
             self.invalidate();
             return Ok(false);
         }
-        if let Some(chain) = self.chain_button.handle_event(&event) {
-            self.chain = Some(chain);
-            self.invalidate();
+        if let Some(chain_event) = self.chain_button.handle_event(&event) {
+            if let controls::MenuEvent::Selected(chain) = chain_event {
+                self.chain = Some(chain);
+                self.invalidate();
+            }
             return Ok(false);
         }
         if let Some(_) = self.swap_button.handle_event(&event) {

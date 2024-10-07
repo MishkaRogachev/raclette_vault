@@ -6,7 +6,7 @@ use ratatui::{
     Frame
 };
 
-use crate::service::{session::Session, crypto::Crypto};
+use crate::service::{crypto::Crypto, session::Session};
 use crate::tui::{widgets::controls, app::{AppCommand, AppScreen}};
 
 const POPUP_WIDTH: u16 = 60;
@@ -54,17 +54,12 @@ impl Screen {
         let receive_button = controls::Button::new("Receive", Some('r'));
         let send_button = controls::Button::new("Send", Some('s'));
 
-        let networks = controls::Button::new("Networks", Some('n'));
-        let mut access_mnemonic = controls::Button::new("Access mnemonic", Some('a'));
-        if session.db.get_seed_phrase().is_err() {
-            access_mnemonic = access_mnemonic.disable();
+        let mut manage_options = HashMap::new();
+        if session.db.get_seed_phrase().is_ok() {
+            manage_options.insert(ManageOption::AccessMnemonic, "Access mnemonic".to_string());
         }
-        let delete_account = controls::Button::new("Delete Account", Some('d')).warning();
-        let manage_options = HashMap::from([
-            (ManageOption::Networks, networks),
-            (ManageOption::AccessMnemonic, access_mnemonic),
-            (ManageOption::DeleteAccount, delete_account),
-        ]);
+        manage_options.insert(ManageOption::Networks, "Networks".to_string());
+        manage_options.insert(ManageOption::DeleteAccount, "Delete Account".to_string());
         let manage_button = controls::MenuButton::new(
             "Manage", Some('m'), manage_options).keep_above();
 
@@ -99,26 +94,29 @@ impl AppScreen for Screen {
             return Ok(false);
         }
 
-        if let Some(manage_option) = self.manage_button.handle_event(&event) {
-            match manage_option {
-                ManageOption::Networks => {
-                    self.popup = Some(Box::new(super::super::popups::networks::Popup::new(self.crypto.clone())));
-                    return Ok(true);
-                },
-                ManageOption::AccessMnemonic => {
-                    self.command_tx.send(AppCommand::SwitchScreen(Box::new(
-                        super::mnemonic_access::Screen::new(self.command_tx.clone(), self.session.clone())
-                    ))).unwrap();
-                    return Ok(true);
-                },
-                ManageOption::DeleteAccount => {
-                    self.command_tx.send(AppCommand::SwitchScreen(Box::new(
-                        super::account_delete::Screen::new(
-                            self.command_tx.clone(), self.session.clone())
-                    ))).unwrap();
-                    return Ok(true);
+        if let Some(manage_event) = self.manage_button.handle_event(&event) {
+            if let controls::MenuEvent::Selected(manage_option) = manage_event {
+                match manage_option {
+                    ManageOption::Networks => {
+                        self.popup = Some(Box::new(super::super::popups::networks::Popup::new(self.crypto.clone())));
+                        return Ok(true);
+                    },
+                    ManageOption::AccessMnemonic => {
+                        self.command_tx.send(AppCommand::SwitchScreen(Box::new(
+                            super::mnemonic_access::Screen::new(self.command_tx.clone(), self.session.clone())
+                        ))).unwrap();
+                        return Ok(true);
+                    },
+                    ManageOption::DeleteAccount => {
+                        self.command_tx.send(AppCommand::SwitchScreen(Box::new(
+                            super::account_delete::Screen::new(
+                                self.command_tx.clone(), self.session.clone())
+                        ))).unwrap();
+                        return Ok(true);
+                    }
                 }
             }
+            return Ok(false);
         }
 
         if let Some(index) = self.mode_switch.handle_event(&event) {
