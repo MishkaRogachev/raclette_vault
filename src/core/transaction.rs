@@ -20,3 +20,8 @@ pub struct TransactionResult {
     pub chain: EthChain,
     pub successed: bool,
 }
+
+pub enum TransactionFees {
+    Estimated { currency: String, amount: f64 },
+    NotEnoughFunds { currency: String },
+}

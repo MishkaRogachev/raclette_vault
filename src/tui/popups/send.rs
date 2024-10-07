@@ -9,7 +9,7 @@ use ratatui::{
     Frame
 };
 
-use crate::core::{balance::Balance, eth_chain::EthChain, eth_utils, transaction::TransactionRequest};
+use crate::core::{eth_chain::EthChain, eth_utils, transaction::{TransactionFees, TransactionRequest}};
 use crate::service::crypto::Crypto;
 use crate::tui::{widgets::controls, app::AppScreen};
 
@@ -23,7 +23,7 @@ pub struct Popup {
     eth_usd_rate: Option<f64>,
     amount_value: f64,
     alt_amount_value: Option<f64>,
-    fees: Option<Balance>,
+    fees: Option<TransactionFees>,
 
     chain_button: controls::MenuButton<EthChain>,
     to: controls::Input,
@@ -94,7 +94,7 @@ impl Popup {
         })
     }
 
-    fn invalidate(&mut self) {
+    fn invalidate_amount_and_fees(&mut self) {
         self.amount_value = 0.0;
         self.alt_amount_value = None;
         self.fees = None;
@@ -105,19 +105,24 @@ impl Popup {
 impl AppScreen for Popup {
     async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         if let Some(_) = controls::handle_scoped_event(&mut [&mut self.to, &mut self.amount], &event) {
-            self.invalidate();
+            self.invalidate_amount_and_fees();
             return Ok(false);
         }
         if let Some(chain_event) = self.chain_button.handle_event(&event) {
             if let controls::MenuEvent::Selected(chain) = chain_event {
                 self.chain = Some(chain);
-                self.invalidate();
+                self.invalidate_amount_and_fees();
+
+                // Update USD rate
+                let crypto = self.crypto.lock().await.clone();
+                self.eth_usd_rate = crypto.get_eth_usd_rate(chain).await.ok();
             }
             return Ok(false);
         }
         if let Some(_) = self.swap_button.handle_event(&event) {
             if let Some(alt_amount_value) = self.alt_amount_value {
                 self.amount_value = alt_amount_value;
+                self.amount.value = format!("{}", self.amount_value).into();
             }
             self.alt_amount_value = None;
             return Ok(false);
@@ -172,16 +177,15 @@ impl AppScreen for Popup {
         // Calc alt amount
         if amount_valid && self.alt_amount_value.is_none() {
             if let Some(eth_usd_rate) = self.eth_usd_rate {
+                // TODO: Wai ot eth, delecgate to service
                 self.alt_amount_value = Some(if self.swap_button.state {
-                    self.amount_value * eth_usd_rate
+                     self.amount_value * eth_usd_rate
                 } else {
                     self.amount_value / eth_usd_rate
                 });
             } else {
                 self.alt_amount_value = None;
             }
-        } else {
-            self.alt_amount_value = None;
         }
 
         self.send_button.disabled = !is_ready;
@@ -323,12 +327,21 @@ impl AppScreen for Popup {
         frame.render_widget(fees_label, fees_layout[1].inner(label_margin));
 
         let fees_value = if let Some(fees) = &self.fees {
-            Paragraph::new(fees.to_string())
-                .style(Style::default().fg(Color::Yellow))
-                .alignment(Alignment::Left)
+            match fees {
+                TransactionFees::Estimated { currency, amount } => {
+                    Paragraph::new(format!("{} {}", amount, currency))
+                        .style(Style::default().fg(Color::Yellow))
+                        .alignment(Alignment::Left)
+                },
+                TransactionFees::NotEnoughFunds { currency } => {
+                    Paragraph::new(format!("Not enough funds ({})", currency))
+                        .style(Style::default().fg(Color::Red))
+                        .alignment(Alignment::Left)
+                }
+            }
         } else {
             Paragraph::new("---")
-                .style(Style::default().fg(Color::Yellow))
+                .style(Style::default().fg(Color::Gray))
                 .alignment(Alignment::Left)
         };
         frame.render_widget(fees_value, fees_layout[2].inner(label_margin));

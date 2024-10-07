@@ -1,9 +1,14 @@
-use crate::core::balance::{Balance, Balances};
+use crate::core::{balance::{Balance, Balances}, eth_chain::EthChain};
 use super::crypto::Crypto;
 
 const BALANCES_FETCH_PROVIDER_DELAY: std::time::Duration = std::time::Duration::from_millis(100);
 
 impl Crypto {
+    pub async fn get_eth_usd_rate(&self, chain: EthChain) -> anyhow::Result<f64> {
+        let provider = self.providers.get(&chain).ok_or_else(|| anyhow::anyhow!("No provider for chain {}", chain))?;
+        provider.get_eth_usd_rate().await
+    }
+
     pub async fn get_balances(&self, account: web3::types::Address) -> Option<Balances> {
         let balances = self.account_balances.read().await;
         if let Some(balance) = balances.get(&account) {

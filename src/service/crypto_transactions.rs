@@ -1,13 +1,13 @@
 
 use web3::{signing::SecretKey, types::{TransactionParameters, U64}};
 
-use crate::core::{balance::Balance, eth_utils, transaction::{TransactionRequest, TransactionResult}};
+use crate::core::{eth_utils, transaction::{TransactionFees, TransactionRequest, TransactionResult}};
 use super::crypto::Crypto;
 
 const ERR_NO_TRANSACTION_FOUND: &str = "No transaction found";
 
 impl Crypto {
-    pub async fn estimate_transaction_fees(&self, request: TransactionRequest) -> anyhow::Result<Balance> {
+    pub async fn estimate_transaction_fees(&self, request: TransactionRequest) -> anyhow::Result<TransactionFees> {
         if request.currency != "ETH" { // TODO: token transactions
             return Err(anyhow::anyhow!("Non-ETH transactions are not supported yet"));
         }

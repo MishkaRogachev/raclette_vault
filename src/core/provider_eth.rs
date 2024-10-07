@@ -1,10 +1,11 @@
+use regex::Regex;
 use web3::{
     contract::{Contract, Options},
     signing::SecretKey,
     types::{Address, CallRequest, Transaction, TransactionId, TransactionParameters, TransactionReceipt, H256, U256},
 };
 
-use super::{balance::{Balance, Balances}, eth_utils, provider::Provider, token::{Token, TokenList}};
+use super::{balance::{Balance, Balances}, eth_utils, provider::Provider, token::{Token, TokenList}, transaction::TransactionFees};
 
 const ETH: &str = "ETH";
 
@@ -99,25 +100,31 @@ impl<T: web3::Transport> Provider<T> {
         Ok(balances)
     }
 
-    pub async fn estimate_transaction_fees(&self, transaction: TransactionParameters, from: Address) -> anyhow::Result<Balance> {
-        let gas_limit: U256 = self.web3.eth()
-            .estimate_gas(
-                CallRequest {
-                    from: Some(from),
-                    to: transaction.to,
-                    gas: None,
-                    gas_price: None,
-                    value: Some(transaction.value),
-                    data: Some(transaction.data),
-                    ..Default::default()
-                },
-                None
-            )
-            .await?;
+    pub async fn estimate_transaction_fees(&self, transaction: TransactionParameters, from: Address) -> anyhow::Result<TransactionFees> {
+        let gas_limit = match self.web3.eth().estimate_gas(
+            CallRequest {
+                from: Some(from),
+                to: transaction.to,
+                gas: None,
+                gas_price: None,
+                value: Some(transaction.value),
+                data: Some(transaction.data),
+                ..Default::default()
+            },
+            None
+        )
+        .await {
+            Ok(gas) => gas,
+            Err(e) => {
+                // TODO: handle specific errors
+                return Ok(TransactionFees::NotEnoughFunds { currency: ETH.to_string() });
+            }
+        };
+
         let gas_price: U256 = self.web3.eth().gas_price().await?;
         let wei = gas_limit * gas_price;
-        let usd_value = eth_utils::wei_to_eth(wei) * self.get_eth_usd_rate().await?;
-        Ok(Balance::new(ETH, self.chain, eth_utils::wei_to_eth(wei), usd_value))
+
+        Ok(TransactionFees::Estimated { currency: ETH.to_string(), amount: eth_utils::wei_to_eth(wei) })
     }
 
     pub async fn send_transaction(&self, transaction: TransactionParameters, secret_key: &SecretKey) -> anyhow::Result<H256> {
