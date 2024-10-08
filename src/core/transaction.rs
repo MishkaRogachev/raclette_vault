@@ -1,5 +1,4 @@
 use web3::types::{Address, H256, U64};
-
 use super::eth_chain::EthChain;
 
 pub struct TransactionRequest {
@@ -10,6 +9,14 @@ pub struct TransactionRequest {
     pub chain: EthChain,
 }
 
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum TransactionStatus {
+    Pending,
+    Successed,
+    Failed,
+}
+
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct TransactionResult {
     pub tx_hash: H256,
     pub block_number: Option<U64>,
@@ -18,7 +25,7 @@ pub struct TransactionResult {
     pub amount: f64,
     pub fee: f64,
     pub chain: EthChain,
-    pub successed: bool,
+    pub status: TransactionStatus,
 }
 
 pub enum TransactionFees {

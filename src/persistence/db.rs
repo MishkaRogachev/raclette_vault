@@ -42,4 +42,18 @@ impl Db {
     pub fn remove(&self, key: &[u8]) -> Result<Option<sled::IVec>> {
         self.db.remove(key).map_err(Into::into)
     }
+
+    pub fn scan_prefix(&self, prefix: &[u8]) -> impl Iterator<Item = Result<(Vec<u8>, Vec<u8>)>> + '_ {
+        self.db.scan_prefix(prefix).map(move |result| {
+            match result {
+                Ok((key, encrypted_value)) => {
+                    match self.cipher.decrypt(&encrypted_value) {
+                        Ok(decrypted_value) => Ok((key.to_vec(), decrypted_value)),
+                        Err(e) => Err(e.into()),
+                    }
+                }
+                Err(e) => Err(e.into()),
+            }
+        })
+    }
 }

@@ -1,7 +1,7 @@
 
 use web3::{signing::SecretKey, types::{TransactionParameters, U64}};
 
-use crate::core::{eth_utils, transaction::{TransactionFees, TransactionRequest, TransactionResult}};
+use crate::core::{eth_utils, transaction::*};
 use super::crypto::Crypto;
 
 const ERR_NO_TRANSACTION_FOUND: &str = "No transaction found";
@@ -43,7 +43,11 @@ impl Crypto {
         let receipt = provider.get_transaction_receipt(tx_hash).await?
             .ok_or_else(|| anyhow::anyhow!(ERR_NO_TRANSACTION_FOUND))?;
 
-        let successed = receipt.status == Some(U64::one());
+        let status =  if receipt.status == Some(U64::one()) {
+            TransactionStatus::Successed
+        } else {
+            TransactionStatus::Pending
+        };
         let response = TransactionResult {
             tx_hash,
             block_number: receipt.block_number,
@@ -52,7 +56,7 @@ impl Crypto {
             amount: request.amount,
             fee: eth_utils::wei_to_eth(receipt.effective_gas_price.unwrap_or_default() * receipt.gas_used.unwrap_or_default()),
             chain: request.chain,
-            successed,
+            status,
         };
 
         self.db.save_transaction(receipt.from, &response)?;
