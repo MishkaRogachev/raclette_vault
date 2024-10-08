@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use web3::signing::SecretKey;
 
 use crate::core::{eth_chain, key_pair::KeyPair, seed_phrase::SeedPhrase};
 use crate::persistence::{db::Db, manage};
@@ -53,5 +54,11 @@ impl Session {
 
     pub fn delete_account(&self) -> anyhow::Result<()> {
         Self::remove_account(self.account)
+    }
+
+    pub fn get_secret_key(&self) -> anyhow::Result<SecretKey> {
+        let keypair = self.db.get_keypair()?;
+        SecretKey::from_slice(keypair.secret_key.as_slice())
+            .map_err(|_| anyhow::anyhow!("Failed to get secret key"))
     }
 }

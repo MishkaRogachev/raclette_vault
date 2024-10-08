@@ -29,6 +29,9 @@ mod tests {
         let accounts = Session::list_accounts()?;
         assert!(accounts.contains(&account));
 
+        // Access private key
+        session.get_secret_key()?;
+
         // Access seed phrase
         let seed_phrase_back = session.db.get_seed_phrase()?;
         assert_eq!(seed_phrase, seed_phrase_back);

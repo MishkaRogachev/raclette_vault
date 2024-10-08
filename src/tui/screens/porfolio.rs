@@ -140,7 +140,7 @@ impl AppScreen for Screen {
         }
 
         if let Some(()) = self.send_button.handle_event(&event) {
-            let popup = super::super::popups::send::Popup::new(self.session.account, self.crypto.clone()).await;
+            let popup = super::super::popups::send::Popup::new(self.session.clone(), self.crypto.clone()).await;
             self.popup = Some(Box::new(popup));
             return Ok(true);
         }

@@ -10,12 +10,13 @@ use ratatui::{
 };
 
 use crate::core::{eth_chain::EthChain, eth_utils, transaction::{TransactionFees, TransactionRequest}};
-use crate::service::crypto::Crypto;
+use crate::service::{crypto::Crypto, session::Session};
 use crate::tui::{widgets::controls, app::AppScreen};
 
 const TITLE: &str = "Send Transaction";
 
 pub struct Popup {
+    session: Session,
     crypto: Arc<Mutex<Crypto>>,
 
     chain: Option<EthChain>,
@@ -35,7 +36,8 @@ pub struct Popup {
 }
 
 impl Popup {
-    pub async fn new(from: Address, crypto: Arc<Mutex<Crypto>>) -> Self {
+    pub async fn new(session: Session, crypto: Arc<Mutex<Crypto>>) -> Self {
+        let from = session.account;
         let chain = None;
         let eth_usd_rate = None;
         let amount_value = 0.0;
@@ -61,6 +63,7 @@ impl Popup {
         let send_button = controls::Button::new("Sign Transaction", Some('s'));
 
         Self {
+            session,
             crypto,
             chain,
             from,
@@ -99,6 +102,16 @@ impl Popup {
         self.alt_amount_value = None;
         self.fees = None;
     }
+
+    async fn send_transaction(&self) -> anyhow::Result<()> {
+        let transaction_request = self.assembly_transaction_request().ok_or_else(
+            || anyhow::anyhow!("Failed to assemble transaction request"))?;
+        let crypto = self.crypto.lock().await.clone();
+        let secret_key = self.session.get_secret_key()?;
+        let _ = crypto.send_transaction(transaction_request, &secret_key).await?;
+        // TODO: Transaction result screen
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
@@ -131,7 +144,9 @@ impl AppScreen for Popup {
             return Ok(true);
         }
         if let Some(()) = self.send_button.handle_event(&event) {
-            // TODO: Send transaction
+            if let Err(err) = self.send_transaction().await {
+                log::error!("Failed to send transaction: {}", err);
+            }
             return Ok(false);
         }
         Ok(false)
