@@ -16,30 +16,40 @@ impl Db {
         Ok(Self { db, cipher })
     }
 
+    pub fn upsert_raw_bytes(&self, key: &[u8], value: &[u8], encrypted: bool) -> Result<()> {
+        if encrypted {
+            self.db.insert(key, self.cipher.encrypt(&value)?)?;
+        } else{
+            self.db.insert(key, value)?;
+        }
+        Ok(())
+    }
+
     pub fn upsert<V>(&self, key: &[u8], value: &V, encrypted: bool) -> Result<()>
     where
         V: Serialize,
     {
-        let mut value = serde_json::to_vec(value)?;
-        if encrypted {
-            value = self.cipher.encrypt(&value)?;
+        self.upsert_raw_bytes(key, &serde_json::to_vec(value)?, encrypted)
+    }
+
+    pub fn get_raw_bytes(&self, key: &[u8], encrypted: bool) -> Result<Option<Vec<u8>>> {
+        if let Some(mut value) = self.db.get(key)? {
+            if encrypted {
+                value = self.cipher.decrypt(&value)?.into();
+            }
+            Ok(Some(value.to_vec()))
+        } else {
+            Ok(None)
         }
-        self.db.insert(key, value)?;
-        Ok(())
     }
 
     pub fn get<V>(&self, key: &[u8], encrypted: bool) -> Result<Option<V>>
     where
         V: for<'de> Deserialize<'de>,
     {
-        if let Some(mut value) = self.db.get(key)? {
-            if encrypted {
-                value = self.cipher.decrypt(&value)?.into();
-            }
-            Ok(Some(serde_json::from_slice(&value)?))
-        } else {
-            Ok(None)
-        }
+        Ok(self.get_raw_bytes(key, encrypted)?
+            .map(|value| serde_json::from_slice(&value))
+            .transpose()?)
     }
 
     pub fn remove(&self, key: &[u8]) -> Result<Option<sled::IVec>> {

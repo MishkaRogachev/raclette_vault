@@ -14,7 +14,6 @@ const ERR_PUBLIC_KEY_NOT_MATCH: &str = "Public key does not match secret key";
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyPair {
-    // TODO: switch to KeyPair from web3 crate
     pub secret_key: Zeroizing<[u8; SECRET_KEY_LEN]>,
     pub public_key: Zeroizing<[u8; PUBLIC_KEY_LEN]>,
 }
