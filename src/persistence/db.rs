@@ -16,24 +16,27 @@ impl Db {
         Ok(Self { db, cipher })
     }
 
-    pub fn insert<V>(&self, key: &[u8], value: &V) -> Result<()>
+    pub fn upsert<V>(&self, key: &[u8], value: &V, encrypted: bool) -> Result<()>
     where
         V: Serialize,
     {
-        let serialized_value = serde_json::to_vec(value)?;
-        let encrypted_value = self.cipher.encrypt(&serialized_value)?;
-        self.db.insert(key, encrypted_value)?;
+        let mut value = serde_json::to_vec(value)?;
+        if encrypted {
+            value = self.cipher.encrypt(&value)?;
+        }
+        self.db.insert(key, value)?;
         Ok(())
     }
 
-    pub fn get<V>(&self, key: &[u8]) -> Result<Option<V>>
+    pub fn get<V>(&self, key: &[u8], encrypted: bool) -> Result<Option<V>>
     where
         V: for<'de> Deserialize<'de>,
     {
-        if let Some(encrypted_value) = self.db.get(key)? {
-            let decrypted_value = self.cipher.decrypt(&encrypted_value)?;
-            let deserialized_value = serde_json::from_slice(&decrypted_value)?;
-            Ok(Some(deserialized_value))
+        if let Some(mut value) = self.db.get(key)? {
+            if encrypted {
+                value = self.cipher.decrypt(&value)?.into();
+            }
+            Ok(Some(serde_json::from_slice(&value)?))
         } else {
             Ok(None)
         }
@@ -43,17 +46,20 @@ impl Db {
         self.db.remove(key).map_err(Into::into)
     }
 
-    pub fn scan_prefix(&self, prefix: &[u8]) -> impl Iterator<Item = Result<(Vec<u8>, Vec<u8>)>> + '_ {
-        self.db.scan_prefix(prefix).map(move |result| {
+    pub fn scan_prefix<V>(&self, prefix: &[u8], cursor: usize, count: usize, encrypted: bool) -> Result<Vec<V>>
+    where V: for<'de> Deserialize<'de> {
+        self.db.scan_prefix(prefix)
+            .skip(cursor).take(count)
+            .map(move |result| {
             match result {
-                Ok((key, encrypted_value)) => {
-                    match self.cipher.decrypt(&encrypted_value) {
-                        Ok(decrypted_value) => Ok((key.to_vec(), decrypted_value)),
-                        Err(e) => Err(e.into()),
+                Ok((_key, mut value)) => {
+                    if encrypted {
+                        value = self.cipher.decrypt(&value)?.into();
                     }
+                    Ok(serde_json::from_slice(&value)?)
                 }
                 Err(e) => Err(e.into()),
             }
-        })
+        }).collect()
     }
 }
