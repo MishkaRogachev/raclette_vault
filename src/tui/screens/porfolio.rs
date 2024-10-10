@@ -19,13 +19,17 @@ enum ManageOption {
     DeleteAccount,
 }
 
+pub trait PorfolioPage: AppScreen {
+    fn on_networks_change(&mut self);
+}
+
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     session: Session,
     crypto: Arc<Mutex<Crypto>>,
 
-    mode_switch: controls::MultiSwitch,
-    mode: Option<Box<dyn AppScreen + Send>>,
+    page_switch: controls::MultiSwitch,
+    page: Option<Box<dyn PorfolioPage + Send>>,
     quit_button: controls::Button,
     receive_button: controls::Button,
     send_button: controls::Button,
@@ -43,7 +47,7 @@ impl Screen {
         crypto.load_active_networks().expect("Failed to load active networks");
         let crypto = Arc::new(Mutex::new(crypto));
 
-        let mode_switch = controls::MultiSwitch::new(vec![
+        let page_switch = controls::MultiSwitch::new(vec![
             controls::Button::new("Accounts", Some('a')),
             controls::Button::new("Transactions", Some('t')),
             controls::Button::new("Charts", Some('c')).disable(),
@@ -63,20 +67,26 @@ impl Screen {
         let manage_button = controls::MenuButton::new(
             "Manage", Some('m'), manage_options).keep_above();
 
-        let mode: Option<Box<dyn AppScreen + Send>> = Some(Box::new(
-            super::porfolio_accounts::Screen::new(session.clone(), crypto.clone())));
+        let page: Option<Box<dyn PorfolioPage + Send>> = Some(Box::new(
+            super::porfolio_accounts::Page::new(session.clone(), crypto.clone())));
 
         Self {
             command_tx,
             session,
             crypto,
-            mode_switch,
-            mode,
+            page_switch,
+            page,
             quit_button,
             receive_button,
             send_button,
             manage_button,
             popup: None,
+        }
+    }
+
+    pub fn on_networks_change(&mut self) {
+        if let Some(page) = &mut self.page {
+            page.on_networks_change();
         }
     }
 }
@@ -88,6 +98,8 @@ impl AppScreen for Screen {
             if let Ok(ok) = popup.handle_event(event).await {
                 if ok {
                     self.popup = None;
+                    // TODO: check if networks have changed indeed
+                    self.on_networks_change();
                     return Ok(true);
                 }
             }
@@ -119,26 +131,26 @@ impl AppScreen for Screen {
             return Ok(false);
         }
 
-        if let Some(index) = self.mode_switch.handle_event(&event) {
+        if let Some(index) = self.page_switch.handle_event(&event) {
             // TODO: switch to enum
             match index {
                 0 => {
-                    self.mode = Some(Box::new(
-                        super::porfolio_accounts::Screen::new(self.session.clone(), self.crypto.clone())
+                    self.page = Some(Box::new(
+                        super::porfolio_accounts::Page::new(self.session.clone(), self.crypto.clone())
                     ));
                 },
                 1 => {
-                    self.mode = Some(Box::new(
-                        super::porfolio_transactions::Screen::new(self.session.clone(), self.crypto.clone())
+                    self.page = Some(Box::new(
+                        super::porfolio_transactions::Page::new(self.session.clone(), self.crypto.clone())
                     ));
                 },
-                _ => {} // TODO: implement modes
+                _ => {} // TODO: other pages
             }
             return Ok(false);
         }
 
-        if let Some(mode) = &mut self.mode {
-            if let Ok(ok) = mode.handle_event(event.clone()).await {
+        if let Some(page) = &mut self.page {
+            if let Ok(ok) = page.handle_event(event.clone()).await {
                 if ok {
                     return Ok(true);
                 }
@@ -169,8 +181,8 @@ impl AppScreen for Screen {
             popup.update().await;
         }
 
-        if let Some(mode) = &mut self.mode {
-            mode.update().await;
+        if let Some(page) = &mut self.page {
+            page.update().await;
         }
     }
 
@@ -179,15 +191,15 @@ impl AppScreen for Screen {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Length(controls::SWITCH_HEIGHT),
-                Constraint::Fill(0), // Fill height for mode
+                Constraint::Fill(0), // Fill height for page
                 Constraint::Length(controls::BUTTON_HEIGHT),
             ])
             .split(area);
 
-        self.mode_switch.render(frame, content_layout[0]);
+        self.page_switch.render(frame, content_layout[0]);
 
-        if let Some(mode) = &mut self.mode {
-            mode.render(frame, content_layout[1]);
+        if let Some(page) = &mut self.page {
+            page.render(frame, content_layout[1]);
         }
 
         let buttons_row = Layout::default()

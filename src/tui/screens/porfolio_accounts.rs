@@ -15,7 +15,7 @@ const SUMMARY_TEXT: &str = "Summary balance";
 
 const UPDATE_INTERVAL: tokio::time::Duration = tokio::time::Duration::from_secs(10);
 
-pub struct Screen {
+pub struct Page {
     crypto: Arc<Mutex<Crypto>>,
     last_update: Option<tokio::time::Instant>,
 
@@ -24,7 +24,7 @@ pub struct Screen {
     scroll: controls::Scroll,
 }
 
-impl Screen {
+impl Page {
     pub fn new(session: Session, crypto: Arc<Mutex<Crypto>>) -> Self {
         let accounts = vec![account::AccountDisplay::new(session.account)];
         let busy = controls::Busy::new("Loading..");
@@ -65,7 +65,7 @@ impl Screen {
 }
 
 #[async_trait::async_trait]
-impl AppScreen for Screen {
+impl AppScreen for Page {
     async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
         self.scroll.handle_event(&event);
         Ok(false)
@@ -127,5 +127,11 @@ impl AppScreen for Screen {
 
         self.scroll.total = total_content_height;
         self.scroll.render(frame, content_layout[1]);
+    }
+}
+
+impl super::porfolio::PorfolioPage for Page {
+    fn on_networks_change(&mut self) {
+        self.last_update = None;
     }
 }
