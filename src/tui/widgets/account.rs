@@ -11,7 +11,7 @@ use super::controls;
 
 const HEADER_HEIGHT: usize = 3;
 
-pub struct Account {
+pub struct AccountDisplay {
     pub name: String,
     pub address: web3::types::Address,
     pub balances: Option<Balances>,
@@ -19,7 +19,7 @@ pub struct Account {
     busy: controls::Busy,
 }
 
-impl Account {
+impl AccountDisplay {
     pub fn new(address: web3::types::Address) -> Self {
         let busy = controls::Busy::new("Loading..");
 
@@ -41,7 +41,7 @@ impl Account {
             balances.iter().fold((0.0, false), |(total_usd, from_test), balance| {
                 (
                     total_usd + balance.summary().usd_value,
-                    from_test || balance.from_test_network(),
+                    from_test || balance.is_from_test_network(),
                 )
             })
         })
@@ -119,7 +119,7 @@ impl Account {
                 .style(Style::default().fg(Color::Yellow))
                 .alignment(Alignment::Left);
 
-            let token_value_color = if balance.from_test_network() { Color::Red } else { Color::Yellow };
+            let token_value_color = if balance.is_from_test_network() { Color::Red } else { Color::Yellow };
             let token_value_label = Paragraph::new(balance.to_string())
                 .style(Style::default().fg(token_value_color))
                 .alignment(Alignment::Right);

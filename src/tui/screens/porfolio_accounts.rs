@@ -19,14 +19,14 @@ pub struct Screen {
     crypto: Arc<Mutex<Crypto>>,
     last_update: Option<tokio::time::Instant>,
 
-    accounts: Vec<account::Account>,
+    accounts: Vec<account::AccountDisplay>,
     busy: controls::Busy,
     scroll: controls::Scroll,
 }
 
 impl Screen {
     pub fn new(session: Session, crypto: Arc<Mutex<Crypto>>) -> Self {
-        let accounts = vec![account::Account::new(session.account)];
+        let accounts = vec![account::AccountDisplay::new(session.account)];
         let busy = controls::Busy::new("Loading..");
         let scroll = controls::Scroll::new();
 
@@ -118,7 +118,8 @@ impl AppScreen for Screen {
             }));
 
         let mut total_content_height = 0;
-        for (account, account_layout) in self.accounts.iter_mut().zip(accounts_layout.iter()) {
+        for (account, account_layout) in self.accounts
+            .iter_mut().zip(accounts_layout.iter()) {
             account.scroll_offset = self.scroll.position;
             account.render(frame, *account_layout);
             total_content_height += account.implicit_height();

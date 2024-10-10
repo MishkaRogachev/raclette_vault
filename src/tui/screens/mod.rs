@@ -9,6 +9,7 @@ mod account_import_finalize;
 // Main
 mod porfolio;
 mod porfolio_accounts;
+mod porfolio_transactions;
 mod account_delete;
 mod mnemonic_access;
 mod mnemonic_delete;

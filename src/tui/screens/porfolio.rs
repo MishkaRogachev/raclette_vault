@@ -12,6 +12,13 @@ use crate::tui::{widgets::controls, app::{AppCommand, AppScreen}};
 const POPUP_WIDTH: u16 = 60;
 const POPUP_HEIGHT: u16 = 30;
 
+#[derive(Clone, PartialEq, Eq, Hash)]
+enum ManageOption {
+    Networks,
+    AccessMnemonic,
+    DeleteAccount,
+}
+
 pub struct Screen {
     command_tx: mpsc::Sender<AppCommand>,
     session: Session,
@@ -26,13 +33,6 @@ pub struct Screen {
     popup: Option<Box<dyn AppScreen + Send>>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-enum ManageOption {
-    Networks,
-    AccessMnemonic,
-    DeleteAccount,
-}
-
 impl Screen {
     pub fn new(command_tx: mpsc::Sender<AppCommand>, session: Session) -> Self {
         let infura_token = std::env::var("INFURA_TOKEN")
@@ -44,8 +44,8 @@ impl Screen {
         let crypto = Arc::new(Mutex::new(crypto));
 
         let mode_switch = controls::MultiSwitch::new(vec![
-            controls::Button::new("Accounts", Some('a')).disable(),
-            controls::Button::new("Transactions", Some('t')).disable(),
+            controls::Button::new("Accounts", Some('a')),
+            controls::Button::new("Transactions", Some('t')),
             controls::Button::new("Charts", Some('c')).disable(),
             controls::Button::new("Settings", Some('s')).disable(),
         ]);
@@ -120,7 +120,18 @@ impl AppScreen for Screen {
         }
 
         if let Some(index) = self.mode_switch.handle_event(&event) {
+            // TODO: switch to enum
             match index {
+                0 => {
+                    self.mode = Some(Box::new(
+                        super::porfolio_accounts::Screen::new(self.session.clone(), self.crypto.clone())
+                    ));
+                },
+                1 => {
+                    self.mode = Some(Box::new(
+                        super::porfolio_transactions::Screen::new(self.session.clone(), self.crypto.clone())
+                    ));
+                },
                 _ => {} // TODO: implement modes
             }
             return Ok(false);

@@ -19,6 +19,10 @@ impl BalanceValue {
     pub fn new(value: f64, usd_value: f64) -> Self {
         Self { value, usd_value }
     }
+
+    pub fn to_string(&self) -> String {
+        format!("{:.6} ({:.2} USD)", self.value, self.usd_value)
+    }
 }
 
 impl Balance {
@@ -30,7 +34,7 @@ impl Balance {
 
     pub fn to_string(&self) -> String {
         let summary = self.summary();
-        format!("{:.6} {} ({:.2} USD)", summary.value, self.currency, summary.usd_value)
+        summary.to_string()
     }
 
     pub fn summary(&self) -> BalanceValue {
@@ -39,7 +43,7 @@ impl Balance {
         })
     }
 
-    pub fn from_test_network(&self) -> bool {
+    pub fn is_from_test_network(&self) -> bool {
         self.chain_values.keys().any(|k| k.is_test_network())
     }
 
