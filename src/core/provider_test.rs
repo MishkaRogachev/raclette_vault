@@ -74,18 +74,4 @@ mod tests {
 
         Ok(())
     }
-
-    #[test_case(EthChain::EthereumMainnet, "0x6B175474E89094C44Da98b954EedeAC495271d0F")]
-    #[test_case(EthChain::EthereumSepolia, "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606EB48")]
-    #[test_case(EthChain::OptimismMainnet, "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606EB48")]
-    #[tokio::test]
-    async fn test_get_latest_transactions_logs(chain: EthChain, contract_address: &str) -> anyhow::Result<()> {
-        let http = get_transport(&chain)?;
-
-        let contract_address: web3::types::Address = eth_utils::str_to_eth_address(contract_address)?;
-        let provider = Provider::new(http, chain)?;
-
-        provider.get_latest_transactions_logs(vec![contract_address], None, None).await?;
-        Ok(())
-    }
 }

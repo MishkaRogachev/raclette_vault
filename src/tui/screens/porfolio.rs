@@ -141,7 +141,7 @@ impl AppScreen for Screen {
                 },
                 1 => {
                     self.page = Some(Box::new(
-                        super::porfolio_transactions::Page::new(self.session.clone(), self.crypto.clone())
+                        super::porfolio_transactions::Page::new(self.session.clone())
                     ));
                 },
                 _ => {} // TODO: other pages

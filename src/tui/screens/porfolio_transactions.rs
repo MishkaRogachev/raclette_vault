@@ -1,5 +1,3 @@
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
@@ -7,37 +5,34 @@ use ratatui::{
     widgets::Paragraph, Frame
 };
 
-use crate::service::{crypto:: Crypto, session::Session};
+use crate::service::session::Session;
 use crate::tui::{widgets::{controls, transaction}, app::AppScreen};
 
 const TITLE_HEIGHT: u16 = 2;
-const TITLE_TEXT: &str = "Transaction history:";
+const TRANSACTIONAS_PER_PAGE: usize = 10;
 
-const TRANSACTION_CNT_PER_PAGE: usize = 10;
+const TITLE_TEXT: &str = "Transactions";
 
 pub struct Page {
     session: Session,
-    crypto: Arc<Mutex<Crypto>>,
     update: bool,
+    cursor: usize,
 
     transactions: Vec<transaction::TransactionDisplay>,
-    busy: controls::Busy,
     scroll: controls::Scroll,
 }
 
 impl Page {
-    pub fn new(session: Session, crypto: Arc<Mutex<Crypto>>) -> Self {
+    pub fn new(session: Session) -> Self {
         let transactions = Vec::new();
 
-        let busy = controls::Busy::new("Loading..");
         let scroll = controls::Scroll::new();
 
         Self {
             session,
-            crypto,
             update: true,
+            cursor: 0,
             transactions,
-            busy,
             scroll
         }
     }
@@ -55,18 +50,18 @@ impl AppScreen for Page {
             return;
         }
 
-        let crypto = self.crypto.lock().await;
+        let transactions = self.session.db.get_transactions(self.session.account, self.cursor, TRANSACTIONAS_PER_PAGE)
+            .unwrap_or_else(|err| {
+                log::error!("Failed to fetch transactions: {:?}", err);
+                Vec::new() // Empty transactions on error
+            }
+        );
 
-        // TODO: fetch transactions
-        // = session.db.get_transactions(
-        //     session.account, 0, TRANSACTION_CNT_PER_PAGE).expect(
-        //         "Failed to get transactions"
-        //     );
+        self.transactions = transactions.into_iter().map(|tx| {
+            transaction::TransactionDisplay::new(tx, transaction::TransactionDisplayType::Incoming)
+        }).collect();
 
-        // let transactions = transactions.into_iter().map(|tx| {
-        //     transaction::TransactionDisplay::new(tx, transaction::TransactionDisplayType::Incoming)
-        // }).collect();
-        //let transactions = crypto.ge
+        self.update = false;
     }
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
@@ -78,18 +73,10 @@ impl AppScreen for Page {
             ])
             .split(area);
 
-        let summary = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(35),
-                Constraint::Percentage(65),
-            ])
-            .split(content_layout[0]);
-
-        let summary_label = Paragraph::new(TITLE_TEXT)
+        let title = Paragraph::new(TITLE_TEXT)
             .style(Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD))
-            .alignment(Alignment::Left);
-        frame.render_widget(summary_label, summary[0]);
+            .alignment(Alignment::Center);
+        frame.render_widget(title, content_layout[0]);
 
         let transactions_layout = Layout::default()
         .direction(Direction::Vertical)

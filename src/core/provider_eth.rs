@@ -114,7 +114,7 @@ impl<T: web3::Transport> Provider<T> {
         )
         .await {
             Ok(gas) => gas,
-            Err(e) => {
+            Err(_) => {
                 // TODO: handle specific errors
                 return Ok(TransactionFees::NotEnoughFunds { currency: ETH.to_string() });
             }
@@ -148,14 +148,5 @@ impl<T: web3::Transport> Provider<T> {
             Ok(receipt) => Ok(receipt),
             Err(err) => Err(anyhow::anyhow!("Failed to get transaction receipt: {}", err)),
         }
-    }
-
-    pub async fn get_latest_transactions_logs(&self, accounts: Vec<Address>, from_block: Option<BlockNumber>, to_block: Option<BlockNumber>) -> anyhow::Result<Vec<Log>> {
-        let filter = FilterBuilder::default()
-            .address(accounts)
-            .from_block(from_block.unwrap_or_else(|| BlockNumber::Latest.into()))
-            .to_block(to_block.unwrap_or_else(|| BlockNumber::Latest.into()))
-            .build();
-        Ok(self.web3.eth().logs(filter).await?)
     }
 }

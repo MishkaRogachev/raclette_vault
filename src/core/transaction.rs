@@ -18,7 +18,7 @@ pub enum TransactionStatus {
 
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct TransactionResult {
-    pub tx_hash: H256,
+    pub hash: H256,
     pub block_number: Option<U64>,
     pub from: Option<Address>,
     pub to: Option<Address>,

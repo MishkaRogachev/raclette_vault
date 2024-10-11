@@ -8,7 +8,7 @@ const ETH_TRANSACTIONS: &[u8] = b"tx_eth";
 
 impl Db {
     pub fn save_transaction(&self, account: Address, transaction: &TransactionResult) -> anyhow::Result<()> {
-        let key = transaction_synthetic_id(account, transaction.tx_hash);
+        let key = transaction_synthetic_id(account, transaction.hash);
         self.upsert(&key, &transaction, false)?;
         Ok(())
     }

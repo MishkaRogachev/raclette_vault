@@ -22,7 +22,7 @@ mod tests {
         let other = web3::types::Address::from_low_u64_be(13);
 
         let first = transaction::TransactionResult {
-            tx_hash: "0x9f3be51fb7b3f83bc7d4a37d3b5f4bb5d4c82b898e8b5c35c6a7ec5e93371c2d".parse()?,
+            hash: "0x9f3be51fb7b3f83bc7d4a37d3b5f4bb5d4c82b898e8b5c35c6a7ec5e93371c2d".parse()?,
             from: Some(account),
             to: Some(other),
             amount: 1.0,
@@ -34,7 +34,7 @@ mod tests {
         db.save_transaction(account, &first)?;
 
         let mut second = transaction::TransactionResult {
-            tx_hash: "0xb3c4a8ec44b5d8b9925b4cb1fc65666c66d29c07ac1faac5740b227fdbb6f5ed".parse()?,
+            hash: "0xb3c4a8ec44b5d8b9925b4cb1fc65666c66d29c07ac1faac5740b227fdbb6f5ed".parse()?,
             from: Some(other),
             to: Some(account),
             amount: 2.0,
