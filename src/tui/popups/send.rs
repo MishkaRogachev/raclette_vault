@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use web3::types::Address;
 use ratatui::{
     crossterm::event::Event,
     layout::{Alignment, Constraint, Direction, Layout, Margin, Rect},
@@ -25,6 +24,7 @@ pub struct Popup {
     amount_value: f64,
     alt_amount_value: Option<f64>,
     fees: Option<TransactionFees>,
+    error: Option<String>,
 
     chain_button: controls::MenuButton<EthChain>,
     to: controls::Input,
@@ -71,6 +71,7 @@ impl Popup {
             amount_value,
             alt_amount_value,
             fees,
+            error: None,
             chain_button,
             to,
             amount,
@@ -103,14 +104,28 @@ impl Popup {
         self.fees = None;
     }
 
-    async fn send_transaction(&self) -> anyhow::Result<()> {
-        let transaction_request = self.assembly_transaction_request().ok_or_else(
-            || anyhow::anyhow!("Failed to assemble transaction request"))?;
+    async fn send_transaction(&mut self) {
+        let transaction_request = match self.assembly_transaction_request() {
+            Some(request) => request,
+            None => {
+                self.error = Some("Invalid transaction params".to_string());
+                return;
+            }
+        };
+
         let crypto = self.crypto.lock().await.clone();
-        let secret_key = self.session.get_secret_key()?;
-        let _ = crypto.send_transaction(transaction_request, &secret_key).await?;
-        // TODO: Transaction result screen
-        Ok(())
+        let secret_key = self.session.get_secret_key().unwrap();
+
+        match crypto.send_transaction(transaction_request, &secret_key).await {
+            Ok(_) => {
+                // TODO: Transaction result screen
+                self.error = None;
+            },
+            Err(err) => {
+                log::warn!("Failed to send transaction: {}", err);
+                self.error = Some(err.to_string());
+            }
+        }
     }
 }
 
@@ -144,9 +159,8 @@ impl AppScreen for Popup {
             return Ok(true);
         }
         if let Some(()) = self.send_button.handle_event(&event) {
-            if let Err(err) = self.send_transaction().await {
-                log::error!("Failed to send transaction: {}", err);
-            }
+            self.send_button.disabled = true;
+            self.send_transaction().await;
             return Ok(false);
         }
         Ok(false)
@@ -224,7 +238,8 @@ impl AppScreen for Popup {
                 Constraint::Length(controls::BUTTON_HEIGHT),    // From
                 Constraint::Length(controls::BUTTON_HEIGHT),    // To
                 Constraint::Length(controls::INPUT_HEIGHT),     // Amount
-                Constraint::Fill(controls::BUTTON_HEIGHT),      // Fees
+                Constraint::Length(controls::BUTTON_HEIGHT),    // Fees
+                Constraint::Fill(controls::BUTTON_HEIGHT),      // Error
                 Constraint::Length(controls::BUTTON_HEIGHT),    // Buttons
             ])
             .split(inner_area);
@@ -361,6 +376,14 @@ impl AppScreen for Popup {
         };
         frame.render_widget(fees_value, fees_layout[2].inner(label_margin));
 
+        // Error
+        if let Some(error_text) = &self.error {
+            let error_label = Paragraph::new(error_text.clone())
+                .style(Style::default().fg(Color::Red))
+                .alignment(Alignment::Left);
+            frame.render_widget(error_label, content_layout[6].inner(label_margin));
+        }
+
         // Chains menu
         self.chain_button.render(frame, chain_layout[2]);
 
@@ -371,7 +394,7 @@ impl AppScreen for Popup {
                 Constraint::Percentage(30),
                 Constraint::Percentage(70),
             ])
-            .split(content_layout[6]);
+            .split(content_layout[7]);
 
         self.back_button.render(frame, buttons_layout[0]);
         self.send_button.render(frame, buttons_layout[1]);
