@@ -132,7 +132,7 @@ impl Popup {
 #[async_trait::async_trait]
 impl AppScreen for Popup {
     async fn handle_event(&mut self, event: Event) -> anyhow::Result<bool> {
-        if let Some(_) = controls::handle_scoped_event(&mut [&mut self.to, &mut self.amount], &event) {
+        if let Some(_) = controls::handle_scoped_event(&mut[&mut self.to, &mut self.amount], &event) {
             self.invalidate_amount_and_fees();
             return Ok(false);
         }
