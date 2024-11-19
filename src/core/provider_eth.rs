@@ -126,9 +126,14 @@ impl<T: web3::Transport> Provider<T> {
         Ok(TransactionFees::Estimated { currency: ETH.to_string(), amount: eth_utils::wei_to_eth(wei) })
     }
 
-    pub async fn send_transaction(&self, transaction: TransactionParameters, secret_key: &SecretKey) -> anyhow::Result<H256> {
+    pub async fn send_transaction(&self, transaction: TransactionParameters, sender: H160, secret_key: &SecretKey) -> anyhow::Result<H256> {
+        let nonce = self.web3.eth().transaction_count(sender, None).await?;
+
         let signed = self.web3.accounts()
-            .sign_transaction(transaction, secret_key)
+            .sign_transaction(TransactionParameters {
+                nonce: Some(nonce), // Explicitly set the nonce
+                ..transaction
+            }, secret_key)
             .await?;
         let tx_hash = self.web3.eth()
             .send_raw_transaction(signed.raw_transaction)
@@ -143,6 +148,7 @@ impl<T: web3::Transport> Provider<T> {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn get_transaction_receipt(&self, tx_hash: H256) -> anyhow::Result<Option<TransactionReceipt>> {
         match self.web3.eth().transaction_receipt(tx_hash).await {
             Ok(receipt) => Ok(receipt),

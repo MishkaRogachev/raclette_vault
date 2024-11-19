@@ -158,12 +158,12 @@ impl AppScreen for Screen {
         }
 
         if let Some(()) = self.receive_button.handle_event(&event) {
-            self.popup = Some(Box::new(super::super::popups::receive::Popup::new(self.session.account)));
+            self.popup = Some(Box::new(super::super::popups::transaction_receive::Popup::new(self.session.account)));
             return Ok(true);
         }
 
         if let Some(()) = self.send_button.handle_event(&event) {
-            let popup = super::super::popups::send::Popup::new(self.session.clone(), self.crypto.clone()).await;
+            let popup = super::super::popups::transaction_send::Popup::new(self.session.clone(), self.crypto.clone()).await;
             self.popup = Some(Box::new(popup));
             return Ok(true);
         }

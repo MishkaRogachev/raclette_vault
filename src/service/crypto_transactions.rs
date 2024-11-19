@@ -37,14 +37,12 @@ impl Crypto {
             ..Default::default()
         };
 
-        let tx_hash = provider.send_transaction(transaction, &secret_key).await?;
+        let tx_hash = provider.send_transaction(transaction, request.from, &secret_key).await?;
         let tx = provider.get_transaction(tx_hash).await?
             .ok_or_else(|| anyhow::anyhow!(ERR_NO_TRANSACTION_FOUND))?;
 
         let transaction = to_transaction_result(&tx, request.chain);
-        if let Some(account) = tx.from {
-            self.db.save_transaction(account, &transaction)?;
-        }
+        self.db.save_transaction(request.from, &transaction)?;
 
         Ok(transaction)
     }
